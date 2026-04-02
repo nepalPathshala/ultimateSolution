@@ -13,7 +13,7 @@
             height: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden !important;  /* Prevent body scroll, main will scroll */
+            overflow: hidden !important;
         }
 
         body {
@@ -32,7 +32,6 @@
             height: 100%;
         }
 
-        /* Main content scrollable container - hide scrollbar */
         main {
             flex: 1;
             overflow-y: auto;
@@ -44,12 +43,10 @@
             display: none;
         }
 
-        /* Header stays fixed at top */
         header {
             flex-shrink: 0;
         }
 
-        /* Other styles */
         .header-shadow {
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
@@ -189,19 +186,36 @@
             font-weight: 500;
         }
         .filter-blue-bg {
-            background-color: #dbeafe;  /* nice blue background */
+            background-color: #dbeafe;
             border-radius: 20px;
             padding: 20px 20px;
             margin-bottom: 32px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        .filter-label {
-            font-size: 0.8rem;
-            font-weight: 700;
-            margin-bottom: 6px;
-            display: block;
-            color: #1e3a8a;
-            letter-spacing: 0.3px;
+        /* Form label style exactly like quiz(2).html - centered with horizontal lines */
+        .form-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 12px;
+            white-space: nowrap;
+            width: 100%;
+        }
+        .form-label::before,
+        .form-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background-color: #94a3b8;
+        }
+        .form-label::before {
+            margin-right: 8px;
+        }
+        .form-label::after {
+            margin-left: 8px;
         }
     </style>
 </head>
@@ -236,7 +250,7 @@
             <!-- AD BANNERS container -->
             <div id="ad-banners-container"></div>
             
-            <!-- FILTER FORM CONTAINER (blue background) - dynamically populated with course/subject dropdowns -->
+            <!-- FILTER FORM CONTAINER (blue background) -->
             <div id="filterFormContainer" class="filter-blue-bg"></div>
             
             <!-- Dynamic sections container (ultimate solutions) -->
@@ -273,16 +287,13 @@
             let rawBrand = brandHeaderElem ? brandHeaderElem.innerText.trim() : "ULTIMATE SOLUTION";
             const brandNameForFilter = rawBrand.toUpperCase().replace(/\s+/g, '_');
             
-            // Global data store
-            let allSectionsData = [];      // raw sections from API
-            let currentCourseFilter = "";  // empty = default (all courses)
-            let currentSubjectFilter = ""; // empty = default (all subjects)
+            let allSectionsData = [];
+            let currentCourseFilter = "";
+            let currentSubjectFilter = "";
             
-            // DOM elements
             let dynamicContainer = document.getElementById('dynamic-sections-container');
             let filterContainer = document.getElementById('filterFormContainer');
             
-            // Helper toast
             function showToast(message = "Comming Soon !!") {
                 const toastEl = document.getElementById('customToast');
                 const messageSpan = document.getElementById('toastMessage');
@@ -304,7 +315,7 @@
                 window.location.href = finalUrl;
             }
             
-            // ========== AD BANNERS (unchanged) ==========
+            // ========== AD BANNERS ==========
             function createAdBannerSection(item) {
                 const { titleText = "Special Offer", imageUrl = "", linkText = "Learn More", linkAddress = "#", order = 0 } = item;
                 const section = document.createElement('section');
@@ -357,7 +368,7 @@
                 } catch (err) { console.error(err); container.innerHTML = ''; }
             }
             
-            // ========== ULTIMATE SOLUTIONS SECTION COMPONENT ==========
+            // ========== ULTIMATE SOLUTIONS SECTION ==========
             function createSectionElement(item) {
                 const { titleText = "MECEE Question Set", subtleText = "Comprehensive collection of past questions.", downloadText = "Download Solutions", downloadLink = "#", imageUrl = "", className = "", subject = "", chapter = "", order = 0 } = item;
                 const section = document.createElement('section');
@@ -387,7 +398,6 @@
                 img.loading = "lazy";
                 img.onerror = function() { if (!this.src.includes('placeholder-medical')) this.src = "https://images.unsplash.com/photo-1581091226033-d5c48150dbaa?q=80&w=1200&auto=format&fit=crop"; };
                 imageContainer.appendChild(img);
-                // Entire thumbnail click redirects to quiz (same as title)
                 imageContainer.addEventListener('click', (e) => { e.stopPropagation(); redirectToQuiz(className, subject, chapter); });
                 section.appendChild(titleEl);
                 section.appendChild(descEl);
@@ -396,46 +406,34 @@
                 return section;
             }
             
-            // Filter & render sections based on currentCourseFilter / currentSubjectFilter
             function renderFilteredSections() {
                 if (!dynamicContainer) return;
                 if (!allSectionsData.length) {
                     dynamicContainer.innerHTML = '<div class="text-center py-12 text-gray-500">No content available.</div>';
                     return;
                 }
-                
                 let filtered = [...allSectionsData];
-                // apply course filter (if not default)
                 if (currentCourseFilter && currentCourseFilter !== "") {
                     filtered = filtered.filter(item => item.className === currentCourseFilter);
                 }
-                // apply subject filter (if not default)
                 if (currentSubjectFilter && currentSubjectFilter !== "") {
                     filtered = filtered.filter(item => item.subject === currentSubjectFilter);
                 }
-                
-                // sort descending by order (largest first => n, n-1, ... 1)
                 filtered.sort((a, b) => (b.order || 0) - (a.order || 0));
-                
                 if (filtered.length === 0) {
                     dynamicContainer.innerHTML = '<div class="text-center py-12 bg-gray-50 rounded-xl text-gray-500">No sections match the selected filters.</div>';
                     return;
                 }
-                
                 dynamicContainer.innerHTML = '';
-                filtered.forEach(item => {
-                    dynamicContainer.appendChild(createSectionElement(item));
-                });
+                filtered.forEach(item => { dynamicContainer.appendChild(createSectionElement(item)); });
             }
             
-            // ========== CUSTOM DROPDOWN LOGIC (Course + Subject) ==========
-            // Helper to close all dropdowns
+            // ========== CUSTOM DROPDOWN LOGIC ==========
             function closeAllDropdowns() {
                 document.querySelectorAll('.custom-select-dropdown').forEach(dd => dd.classList.remove('show'));
                 document.querySelectorAll('.custom-select-trigger').forEach(tr => tr.classList.remove('open'));
             }
             
-            // Build course dropdown inside filterContainer
             function buildCourseDropdown(courseOptionsList) {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'custom-select-wrapper mb-5';
@@ -445,7 +443,6 @@
                 const dropdown = document.createElement('div');
                 dropdown.className = 'custom-select-dropdown';
                 
-                // Add default option
                 const defaultOption = document.createElement('div');
                 defaultOption.className = 'custom-select-option';
                 if (currentCourseFilter === "") defaultOption.classList.add('selected');
@@ -455,18 +452,15 @@
                     e.stopPropagation();
                     currentCourseFilter = "";
                     trigger.textContent = "Default Course";
-                    // update selected style
                     document.querySelectorAll('#filterFormContainer .custom-select-option').forEach(opt => opt.classList.remove('selected'));
                     defaultOption.classList.add('selected');
                     closeAllDropdowns();
-                    // reset subject filter to default and rebuild subject dropdown
                     currentSubjectFilter = "";
                     rebuildSubjectDropdown(getUniqueSubjectsForCurrentCourse());
                     renderFilteredSections();
                 });
                 dropdown.appendChild(defaultOption);
                 
-                // add course options
                 courseOptionsList.forEach(course => {
                     const optDiv = document.createElement('div');
                     optDiv.className = 'custom-select-option';
@@ -477,11 +471,9 @@
                         e.stopPropagation();
                         currentCourseFilter = course;
                         trigger.textContent = course;
-                        // update selected style
                         document.querySelectorAll('#filterFormContainer .custom-select-option').forEach(opt => opt.classList.remove('selected'));
                         optDiv.classList.add('selected');
                         closeAllDropdowns();
-                        // Reset subject filter to default and rebuild subject list based on new course
                         currentSubjectFilter = "";
                         rebuildSubjectDropdown(getUniqueSubjectsForCurrentCourse());
                         renderFilteredSections();
@@ -500,7 +492,6 @@
                 return wrapper;
             }
             
-            // rebuild subject dropdown based on provided subjects array
             function rebuildSubjectDropdown(subjectsArray) {
                 if (!filterContainer) return;
                 const existingSubjectWrapper = document.getElementById('subjectCustomWrapper');
@@ -515,7 +506,6 @@
                 const dropdownSub = document.createElement('div');
                 dropdownSub.className = 'custom-select-dropdown';
                 
-                // Default subject option
                 const defaultSubOpt = document.createElement('div');
                 defaultSubOpt.className = 'custom-select-option';
                 if (currentSubjectFilter === "") defaultSubOpt.classList.add('selected');
@@ -532,7 +522,6 @@
                 });
                 dropdownSub.appendChild(defaultSubOpt);
                 
-                // add subject options
                 subjectsArray.forEach(sub => {
                     const optDiv = document.createElement('div');
                     optDiv.className = 'custom-select-option';
@@ -569,7 +558,6 @@
                 return Array.from(coursesSet).sort();
             }
             
-            // get subjects based on selected course (if course selected, filter subjects within that course)
             function getUniqueSubjectsForCurrentCourse() {
                 if (!allSectionsData.length) return [];
                 let filtered = [...allSectionsData];
@@ -581,36 +569,29 @@
                 return Array.from(subjectsSet).sort();
             }
             
-            // Build entire filter form (both dropdowns)
             function buildFilterForm() {
                 if (!filterContainer) return;
                 filterContainer.innerHTML = '';
                 
-                // add label and layout
-                const courseLabel = document.createElement('div');
-                courseLabel.className = 'filter-label';
-                courseLabel.textContent = '📚 SELECT COURSE';
+                // Course label with horizontal lines (form-label style)
+                const courseLabel = document.createElement('label');
+                courseLabel.className = 'form-label';
+                courseLabel.textContent = 'SELECT COURSE';
                 filterContainer.appendChild(courseLabel);
+                
                 const courseSelectWrapper = buildCourseDropdown(getUniqueCoursesFromData());
                 filterContainer.appendChild(courseSelectWrapper);
                 
-                const subjectLabel = document.createElement('div');
-                subjectLabel.className = 'filter-label mt-2';
-                subjectLabel.textContent = '📖 SELECT SUBJECT';
+                // Subject label with horizontal lines
+                const subjectLabel = document.createElement('label');
+                subjectLabel.className = 'form-label';
+                subjectLabel.textContent = 'SELECT SUBJECT';
                 filterContainer.appendChild(subjectLabel);
-                // subject wrapper will be appended inside rebuildSubjectDropdown (initial)
+                
                 rebuildSubjectDropdown(getUniqueSubjectsForCurrentCourse());
             }
             
-            // Reset global filters and rebuild UI
-            function resetAndRenderFull() {
-                currentCourseFilter = "";
-                currentSubjectFilter = "";
-                if (filterContainer) buildFilterForm();
-                renderFilteredSections();
-            }
-            
-            // ========== LOAD ULTIMATE DATA AND INITIALIZE ==========
+            // ========== LOAD DATA ==========
             async function loadUltimateDataAndSetup() {
                 dynamicContainer.innerHTML = '';
                 const loaderDiv = document.createElement('div');
@@ -630,9 +611,7 @@
                         dynamicContainer.innerHTML = '<div class="text-center py-12 text-gray-500">No sections found.</div>';
                         return;
                     }
-                    // Build filter form after data ready
                     buildFilterForm();
-                    // render initial all sections (descending order)
                     renderFilteredSections();
                 } catch (err) {
                     console.error(err);
@@ -640,18 +619,15 @@
                 }
             }
             
-            // Global click listener to close dropdowns when clicking outside
             document.addEventListener('click', function(e) {
                 if (!e.target.closest('.custom-select-wrapper')) {
                     closeAllDropdowns();
                 }
             });
             
-            // ========== INITIALIZE ON PAGE LOAD ==========
             document.addEventListener('DOMContentLoaded', () => {
                 const adContainer = document.getElementById('ad-banners-container');
                 if (adContainer) renderAdBanners(adContainer).catch(e => console.warn(e));
-                // Initialize ultimate sections with filter integration
                 loadUltimateDataAndSetup().catch(e => console.warn(e));
             });
         })();
