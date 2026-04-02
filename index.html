@@ -140,12 +140,24 @@
             justify-content: space-between;
             align-items: center;
             transition: all 0.2s;
+            /* Truncation for long text */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .custom-select-trigger span:first-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
         }
         .custom-select-trigger::after {
             content: "▼";
             font-size: 0.7rem;
             color: #64748b;
             transition: transform 0.2s;
+            margin-left: 12px;
+            flex-shrink: 0;
         }
         .custom-select-trigger.open::after {
             transform: rotate(180deg);
@@ -174,6 +186,9 @@
             cursor: pointer;
             transition: background 0.1s;
             border-bottom: 1px solid #e2e8f0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .custom-select-option:last-child {
             border-bottom: none;
@@ -217,11 +232,31 @@
         .form-label::after {
             margin-left: 8px;
         }
+        
+        /* ===== TWO COLUMN GRID FOR DESKTOP ===== */
+        /* Mobile: single column (flex column) */
+        #dynamic-sections-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        /* Remove default margin-bottom from sections inside grid */
+        #dynamic-sections-container > section {
+            margin-bottom: 0;
+        }
+        /* Desktop: two column grid, no divider lines */
+        @media (min-width: 768px) {
+            #dynamic-sections-container {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 2rem;
+            }
+        }
     </style>
 </head>
 <body>
 
-    <!-- Header Navigation -->
+    <!-- Header Navigation (No skeleton, always visible) -->
     <header class="header-shadow bg-white border-b border-gray-100 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
             <div class="bg-black px-4 py-2 rounded-md">
@@ -246,18 +281,24 @@
 
     <!-- Main Content (scrollable) -->
     <main>
-        <div class="max-w-3xl mx-auto px-6 py-8 top-margin-adjust">
-            <!-- AD BANNERS container -->
+        <div class="max-w-3xl md:max-w-6xl mx-auto px-4 md:px-6 py-8 top-margin-adjust">
+            <!-- AD BANNERS container - will show loader but no text/objects interfering -->
             <div id="ad-banners-container"></div>
             
-            <!-- FILTER FORM CONTAINER (blue background) -->
-            <div id="filterFormContainer" class="filter-blue-bg"></div>
+            <!-- FILTER FORM CONTAINER (blue background) - hidden until data loads -->
+            <div id="filterFormContainer" class="filter-blue-bg" style="display: none;"></div>
             
-            <!-- Dynamic sections container (ultimate solutions) -->
-            <div id="dynamic-sections-container"></div>
+            <!-- Dynamic sections container (ultimate solutions) - shows skeleton loader initially -->
+            <div id="dynamic-sections-container">
+                <div class="loader">
+                    <div class="loader-dot"></div>
+                    <div class="loader-dot"></div>
+                    <div class="loader-dot"></div>
+                </div>
+            </div>
         </div>
 
-        <!-- Footer -->
+        <!-- Footer (always visible, no skeleton) -->
         <footer class="py-12 bg-gray-50 mt-16 border-t border-gray-200">
             <div class="max-w-6xl mx-auto px-4 text-center">
                 <span class="text-gray-500 font-bold tracking-widest text-sm title-underline">
@@ -315,7 +356,7 @@
                 window.location.href = finalUrl;
             }
             
-            // ========== AD BANNERS ==========
+            // ========== AD BANNERS (no skeleton text, only loader dots) ==========
             function createAdBannerSection(item) {
                 const { titleText = "Special Offer", imageUrl = "", linkText = "Learn More", linkAddress = "#", order = 0 } = item;
                 const section = document.createElement('section');
@@ -349,6 +390,7 @@
             
             async function renderAdBanners(container) {
                 if (!container) return;
+                // Show minimal loading (only dots, no text)
                 container.innerHTML = '';
                 const loaderDiv = document.createElement('div');
                 loaderDiv.className = 'loader';
@@ -372,7 +414,7 @@
             function createSectionElement(item) {
                 const { titleText = "MECEE Question Set", subtleText = "Comprehensive collection of past questions.", downloadText = "Download Solutions", downloadLink = "#", imageUrl = "", className = "", subject = "", chapter = "", order = 0 } = item;
                 const section = document.createElement('section');
-                section.className = "mb-16";
+                section.className = "";
                 const titleEl = document.createElement('h2');
                 titleEl.textContent = titleText;
                 titleEl.className = "text-3xl font-extrabold text-gray-900 mb-4 tracking-tight leading-tight uppercase title-underline clickable-title";
@@ -406,6 +448,7 @@
                 return section;
             }
             
+            // Sorting logic: default (no filters) -> descending order; any filter active -> ascending order
             function renderFilteredSections() {
                 if (!dynamicContainer) return;
                 if (!allSectionsData.length) {
@@ -419,7 +462,17 @@
                 if (currentSubjectFilter && currentSubjectFilter !== "") {
                     filtered = filtered.filter(item => item.subject === currentSubjectFilter);
                 }
-                filtered.sort((a, b) => (b.order || 0) - (a.order || 0));
+                
+                // Determine if default (no active filters)
+                const isDefault = (!currentCourseFilter || currentCourseFilter === "") && (!currentSubjectFilter || currentSubjectFilter === "");
+                if (isDefault) {
+                    // Descending order: larger order first (n, n-1, ..., 1)
+                    filtered.sort((a, b) => (b.order || 0) - (a.order || 0));
+                } else {
+                    // Ascending order: smaller order first (1,2,3,...)
+                    filtered.sort((a, b) => (a.order || 0) - (b.order || 0));
+                }
+                
                 if (filtered.length === 0) {
                     dynamicContainer.innerHTML = '<div class="text-center py-12 bg-gray-50 rounded-xl text-gray-500">No sections match the selected filters.</div>';
                     return;
@@ -439,7 +492,16 @@
                 wrapper.className = 'custom-select-wrapper mb-5';
                 const trigger = document.createElement('div');
                 trigger.className = 'custom-select-trigger';
-                trigger.textContent = currentCourseFilter && currentCourseFilter !== "" ? currentCourseFilter : "Default Course";
+                // Wrap text in span for ellipsis
+                const triggerTextSpan = document.createElement('span');
+                triggerTextSpan.textContent = currentCourseFilter && currentCourseFilter !== "" ? currentCourseFilter : "Default Course";
+                trigger.innerHTML = '';
+                trigger.appendChild(triggerTextSpan);
+                // Add pseudo-element via CSS, but we need the arrow, so we'll keep the original structure
+                // Recreate to have proper inner structure
+                trigger.textContent = ''; 
+                trigger.appendChild(triggerTextSpan);
+                // The arrow is added via CSS ::after, so fine
                 const dropdown = document.createElement('div');
                 dropdown.className = 'custom-select-dropdown';
                 
@@ -451,7 +513,7 @@
                 defaultOption.addEventListener('click', (e) => {
                     e.stopPropagation();
                     currentCourseFilter = "";
-                    trigger.textContent = "Default Course";
+                    triggerTextSpan.textContent = "Default Course";
                     document.querySelectorAll('#filterFormContainer .custom-select-option').forEach(opt => opt.classList.remove('selected'));
                     defaultOption.classList.add('selected');
                     closeAllDropdowns();
@@ -470,7 +532,7 @@
                     optDiv.addEventListener('click', (e) => {
                         e.stopPropagation();
                         currentCourseFilter = course;
-                        trigger.textContent = course;
+                        triggerTextSpan.textContent = course;
                         document.querySelectorAll('#filterFormContainer .custom-select-option').forEach(opt => opt.classList.remove('selected'));
                         optDiv.classList.add('selected');
                         closeAllDropdowns();
@@ -502,7 +564,10 @@
                 subjectWrapper.className = 'custom-select-wrapper';
                 const triggerSub = document.createElement('div');
                 triggerSub.className = 'custom-select-trigger';
-                triggerSub.textContent = currentSubjectFilter && currentSubjectFilter !== "" ? currentSubjectFilter : "Default Subject";
+                const triggerSubText = document.createElement('span');
+                triggerSubText.textContent = currentSubjectFilter && currentSubjectFilter !== "" ? currentSubjectFilter : "Default Subject";
+                triggerSub.innerHTML = '';
+                triggerSub.appendChild(triggerSubText);
                 const dropdownSub = document.createElement('div');
                 dropdownSub.className = 'custom-select-dropdown';
                 
@@ -514,7 +579,7 @@
                 defaultSubOpt.addEventListener('click', (e) => {
                     e.stopPropagation();
                     currentSubjectFilter = "";
-                    triggerSub.textContent = "Default Subject";
+                    triggerSubText.textContent = "Default Subject";
                     document.querySelectorAll('#subjectCustomWrapper .custom-select-option').forEach(opt => opt.classList.remove('selected'));
                     defaultSubOpt.classList.add('selected');
                     closeAllDropdowns();
@@ -531,7 +596,7 @@
                     optDiv.addEventListener('click', (e) => {
                         e.stopPropagation();
                         currentSubjectFilter = sub;
-                        triggerSub.textContent = sub;
+                        triggerSubText.textContent = sub;
                         document.querySelectorAll('#subjectCustomWrapper .custom-select-option').forEach(opt => opt.classList.remove('selected'));
                         optDiv.classList.add('selected');
                         closeAllDropdowns();
@@ -571,9 +636,9 @@
             
             function buildFilterForm() {
                 if (!filterContainer) return;
+                filterContainer.style.display = 'block';
                 filterContainer.innerHTML = '';
                 
-                // Course label with horizontal lines (form-label style)
                 const courseLabel = document.createElement('label');
                 courseLabel.className = 'form-label';
                 courseLabel.textContent = 'SELECT COURSE';
@@ -582,7 +647,6 @@
                 const courseSelectWrapper = buildCourseDropdown(getUniqueCoursesFromData());
                 filterContainer.appendChild(courseSelectWrapper);
                 
-                // Subject label with horizontal lines
                 const subjectLabel = document.createElement('label');
                 subjectLabel.className = 'form-label';
                 subjectLabel.textContent = 'SELECT SUBJECT';
@@ -593,11 +657,12 @@
             
             // ========== LOAD DATA ==========
             async function loadUltimateDataAndSetup() {
+                // Show skeleton inside dynamic container
                 dynamicContainer.innerHTML = '';
-                const loaderDiv = document.createElement('div');
-                loaderDiv.className = 'loader';
-                for (let i = 0; i < 3; i++) { const dot = document.createElement('div'); dot.className = 'loader-dot'; loaderDiv.appendChild(dot); }
-                dynamicContainer.appendChild(loaderDiv);
+                const skeletonLoader = document.createElement('div');
+                skeletonLoader.className = 'loader';
+                for (let i = 0; i < 3; i++) { const dot = document.createElement('div'); dot.className = 'loader-dot'; skeletonLoader.appendChild(dot); }
+                dynamicContainer.appendChild(skeletonLoader);
                 
                 try {
                     const response = await fetch(ULTIMATE_ENDPOINT);
@@ -611,6 +676,7 @@
                         dynamicContainer.innerHTML = '<div class="text-center py-12 text-gray-500">No sections found.</div>';
                         return;
                     }
+                    // Build filter form (initially hidden, now visible)
                     buildFilterForm();
                     renderFilteredSections();
                 } catch (err) {
