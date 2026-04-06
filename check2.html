@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>School Admin Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyC6NRjkwiazA-aYF4okvnLW4qpCyMg8O9E",
+      authDomain: "fir-f3d53.firebaseapp.com",
+      databaseURL: "https://fir-f3d53-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "fir-f3d53",
+      storageBucket: "fir-f3d53.firebasestorage.app",
+      messagingSenderId: "683707045028",
+      appId: "1:683707045028:web:93990fa0de8767dda90231"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // Backend URL (your Render server)
+    const BACKEND_URL = 'https://dilshadalmm-yosv.onrender.com';
+
+    // DOM elements
+    const authSection = document.getElementById('auth-section');
+    const regSection = document.getElementById('registration-section');
+    const profileSection = document.getElementById('profile-section');
+    const pendingSection = document.getElementById('pending-section');
+
+    // Auth elements
+    const loginEmail = document.getElementById('login-email');
+    const loginPassword = document.getElementById('login-password');
+    const signupEmail = document.getElementById('signup-email');
+    const signupPassword = document.getElementById('signup-password');
+    const authError = document.getElementById('auth-error');
+    const authStatusSpan = document.getElementById('auth-status-span');
+
+    // Registration form elements
+    const schoolForm = document.getElementById('school-registration-form');
+    const regResponse = document.getElementById('reg-response');
+    const regResponseMsg = document.getElementById('reg-response-message');
+    const regFormContainer = document.getElementById('reg-form-container');
+    const regHeading = document.getElementById('reg-heading');
+
+    // Profile elements
+    const profileSchoolName = document.getElementById('profile-school-name');
+    const profileEmail = document.getElementById('profile-email');
+    const profilePhone = document.getElementById('profile-phone');
+    const profileAddress = document.getElementById('profile-address');
+    const profileIemis = document.getElementById('profile-iemis');
+    const profileLogo = document.getElementById('profile-logo');
+    const profileUserEmailSpan = document.getElementById('profile-user-email');
+    const logoutProfileBtn = document.getElementById('logout-profile-btn');
+
+    // Pending section
+    const pendingMessage = document.getElementById('pending-message');
+    const logoutPendingBtn = document.getElementById('logout-pending-btn');
+
+    // Common logout buttons
+    const logoutRegBtn = document.getElementById('logout-reg-btn');
+    const logoutAuthBtn = document.getElementById('logout-auth-btn');
+
+    // Helper: show/hide sections
+    function showSection(section) {
+      authSection.classList.add('hidden');
+      regSection.classList.add('hidden');
+      profileSection.classList.add('hidden');
+      pendingSection.classList.add('hidden');
+      if (section === 'auth') authSection.classList.remove('hidden');
+      else if (section === 'reg') regSection.classList.remove('hidden');
+      else if (section === 'profile') profileSection.classList.remove('hidden');
+      else if (section === 'pending') pendingSection.classList.remove('hidden');
+    }
+
+    function showAuthError(msg) {
+      authError.textContent = msg;
+      authError.classList.remove('hidden');
+      setTimeout(() => authError.classList.add('hidden'), 5000);
+    }
+
+    function showRegMessage(success, message, data = null) {
+      regResponseMsg.innerHTML = '';
+      regResponse.classList.remove('hidden');
+      const div = document.createElement('div');
+      div.className = success ? 'bg-green-100 border-green-500 text-green-700' : 'bg-red-100 border-red-500 text-red-700';
+      div.classList.add('border-l-4', 'p-4', 'rounded', 'shadow-sm');
+      div.innerHTML = `
+        <p class="font-bold">${success ? '✅ Success' : '❌ Error'}</p>
+        <p class="text-sm mt-1">${message}</p>
+        ${data ? `<pre class="mt-2 text-xs bg-white p-2 rounded overflow-x-auto">${JSON.stringify(data, null, 2)}</pre>` : ''}
+      `;
+      regResponseMsg.appendChild(div);
+    }
+
+    // Core function: call school_admin login endpoint and decide next view
+    async function checkSchoolAdminStatus(user) {
+      if (!user) {
+        showSection('auth');
+        return;
+      }
+
+      try {
+        const tokenId = await user.getIdToken();
+        const response = await fetch(`${BACKEND_URL}/school_admin/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tokenId })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // SUCCESS: user and approved school found → show profile
+          const schoolData = data; // { schoolName, email, phoneNumber, address, iemisCode, schoolLogo }
+          profileSchoolName.textContent = schoolData.schoolName || '—';
+          profileEmail.textContent = schoolData.email || '—';
+          profilePhone.textContent = schoolData.phoneNumber || '—';
+          profileAddress.textContent = schoolData.address || '—';
+          profileIemis.textContent = schoolData.iemisCode || '—';
+          if (schoolData.schoolLogo && schoolData.schoolLogo.trim() !== '') {
+            profileLogo.src = schoolData.schoolLogo;
+            profileLogo.classList.remove('hidden');
+          } else {
+            profileLogo.classList.add('hidden');
+          }
+          profileUserEmailSpan.textContent = user.email;
+          showSection('profile');
+        } else {
+          // Error case: determine reason based on error message
+          const errorMsg = data.error || 'Unknown error';
+          if (errorMsg.includes('School not approved') || errorMsg === 'SCHOOL_NOT_APPROVED') {
+            // School exists but not approved → show pending approval screen
+            pendingMessage.textContent = 'Your school registration is pending approval. Please wait for the admin to approve your school account. You will be able to access the dashboard once approved.';
+            showSection('pending');
+          } 
+          else if (errorMsg.includes('No associated school found') || errorMsg === 'SCHOOL_NOT_FOUND') {
+            // User exists (school_admin role) but no school linked → show registration form
+            regHeading.textContent = '🏫 Register Your School';
+            regFormContainer.classList.remove('hidden');
+            showRegMessage(false, 'No school found for your account. Please register your school below.', null);
+            setTimeout(() => regResponse.classList.add('hidden'), 3000);
+            showSection('reg');
+          }
+          else if (errorMsg.includes('User not found') || errorMsg.includes('Account not active') || errorMsg.includes('not a school admin') || errorMsg === 'USER_NOT_FOUND' || errorMsg === 'UNAUTHORIZED_ROLE_OR_STATUS') {
+            // User document missing or role/status invalid → show registration form (create admin account + school)
+            regHeading.textContent = '📝 Complete Admin Account & School Registration';
+            regFormContainer.classList.remove('hidden');
+            showRegMessage(false, 'Your admin account is incomplete. Please complete registration to create your school admin profile.', null);
+            setTimeout(() => regResponse.classList.add('hidden'), 3000);
+            showSection('reg');
+          }
+          else {
+            // Any other error: fallback to auth section with error
+            showSection('auth');
+            showAuthError(`Login check failed: ${errorMsg}. Please try again or contact support.`);
+          }
+        }
+      } catch (err) {
+        console.error('Error calling /school_admin/login:', err);
+        showSection('auth');
+        showAuthError('Unable to verify account status. Please check your network and try again.');
+      }
+    }
+
+    // Handle registration form submission (creates user doc + school doc)
+    schoolForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      regResponse.classList.add('hidden');
+
+      const user = auth.currentUser;
+      if (!user) {
+        showRegMessage(false, 'You must be logged in to register a school.');
+        return;
+      }
+
+      const userEmail = user.email;
+      if (!userEmail || !/^[^\s@]+@([^\s@]+\.)+[^\s@]+$/.test(userEmail)) {
+        showRegMessage(false, 'Authenticated user email is invalid.');
+        return;
+      }
+
+      let tokenId;
+      try {
+        tokenId = await user.getIdToken();
+      } catch (err) {
+        showRegMessage(false, `Failed to get authentication token: ${err.message}`);
+        return;
+      }
+
+      const schoolName = document.getElementById('schoolName').value.trim();
+      const iemisCode = document.getElementById('iemisCode').value.trim() || undefined;
+      const userName = document.getElementById('userName').value.trim();
+      const phoneNumber = document.getElementById('phoneNumber').value.trim();
+      const schoolAddress = document.getElementById('schoolAddress').value.trim();
+      const schoolLogo = document.getElementById('schoolLogo').value.trim() || undefined;
+
+      // Validations
+      if (!schoolName || schoolName.length < 3) {
+        showRegMessage(false, 'School name must be at least 3 characters.');
+        return;
+      }
+      if (!userName || userName.length < 3) {
+        showRegMessage(false, 'User name must be at least 3 characters.');
+        return;
+      }
+      const digitsOnly = phoneNumber.replace(/\D/g, '');
+      if (!digitsOnly || digitsOnly.length < 7 || digitsOnly.length > 15) {
+        showRegMessage(false, 'Phone number must contain 7-15 digits (non-digits will be stripped).');
+        return;
+      }
+      if (!schoolAddress) {
+        showRegMessage(false, 'School address is required.');
+        return;
+      }
+      if (iemisCode && iemisCode !== '') {
+        if (!/^\d{5,15}$/.test(iemisCode)) {
+          showRegMessage(false, 'IEMIS code must be numeric and 5-15 digits long.');
+          return;
+        }
+      }
+
+      const payload = {
+        tokenId,
+        schoolName,
+        iemisCode: iemisCode || null,
+        userName,
+        email: userEmail,
+        phoneNumber,
+        schoolAddress,
+        schoolLogo: schoolLogo || null
+      };
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/register-school`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (response.ok) {
+          // Registration success: show success message, then re-check status (should now have user doc + school doc, but school status = pending)
+          showRegMessage(true, result.message || 'Registration successful! Your school information has been submitted for approval. You will be able to access the dashboard once approved.', result.data);
+          // Clear form fields
+          schoolForm.reset();
+          // After successful registration, re-check status: this will likely lead to pending screen (since school not approved yet)
+          setTimeout(async () => {
+            const currentUser = auth.currentUser;
+            if (currentUser) {
+              await checkSchoolAdminStatus(currentUser);
+            } else {
+              showSection('auth');
+            }
+          }, 2000);
+        } else {
+          showRegMessage(false, result.message || 'Registration failed.', result);
+        }
+      } catch (err) {
+        console.error('Fetch error:', err);
+        showRegMessage(false, `Network error: ${err.message}`);
+      }
+    });
+
+    // Authentication handlers
+    window.handleLogin = async () => {
+      const email = loginEmail.value.trim();
+      const password = loginPassword.value;
+      if (!email || !password) {
+        showAuthError('Please enter email and password');
+        return;
+      }
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        loginEmail.value = '';
+        loginPassword.value = '';
+        // onAuthStateChanged will trigger checkSchoolAdminStatus
+      } catch (err) {
+        showAuthError(err.message);
+      }
+    };
+
+    window.handleSignup = async () => {
+      const email = signupEmail.value.trim();
+      const password = signupPassword.value;
+      if (!email || !password) {
+        showAuthError('Please enter email and password for signup');
+        return;
+      }
+      if (password.length < 6) {
+        showAuthError('Password must be at least 6 characters');
+        return;
+      }
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        signupEmail.value = '';
+        signupPassword.value = '';
+        // onAuthStateChanged will trigger checkSchoolAdminStatus
+      } catch (err) {
+        showAuthError(err.message);
+      }
+    };
+
+    // Logout function
+    async function handleLogout() {
+      await auth.signOut();
+      showSection('auth');
+      // Reset any forms/messages
+      schoolForm.reset();
+      regResponse.classList.add('hidden');
+      authError.classList.add('hidden');
+    }
+
+    window.handleLogout = handleLogout;
+
+    // Attach logout listeners to all logout buttons
+    if (logoutProfileBtn) logoutProfileBtn.addEventListener('click', handleLogout);
+    if (logoutRegBtn) logoutRegBtn.addEventListener('click', handleLogout);
+    if (logoutPendingBtn) logoutPendingBtn.addEventListener('click', handleLogout);
+    if (logoutAuthBtn) logoutAuthBtn.addEventListener('click', handleLogout);
+
+    // Monitor auth state
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Show a loading indicator briefly (optional)
+        authStatusSpan.textContent = `Logged in as: ${user.email}`;
+        // Call the status checker which will decide which view to show
+        await checkSchoolAdminStatus(user);
+      } else {
+        // No user: show auth section
+        showSection('auth');
+        authStatusSpan.textContent = 'Not logged in';
+      }
+    });
+  </script>
+</head>
+<body class="bg-gray-100 font-sans antialiased">
+  <div class="max-w-5xl mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-center text-indigo-700 mb-8">🏫 School Admin Portal</h1>
+
+    <!-- ==================== AUTHENTICATION SECTION ==================== -->
+    <div id="auth-section" class="bg-white rounded-lg shadow-md p-6 mb-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">🔐 Authentication</h2>
+      <div id="auth-error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4"></div>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="border rounded-md p-4">
+          <h3 class="text-lg font-medium mb-3">Login</h3>
+          <input type="email" id="login-email" placeholder="Email" class="w-full border rounded px-3 py-2 mb-2" />
+          <input type="password" id="login-password" placeholder="Password" class="w-full border rounded px-3 py-2 mb-3" />
+          <button onclick="handleLogin()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full transition">Login</button>
+        </div>
+        <div class="border rounded-md p-4">
+          <h3 class="text-lg font-medium mb-3">Create Account</h3>
+          <input type="email" id="signup-email" placeholder="Email" class="w-full border rounded px-3 py-2 mb-2" />
+          <input type="password" id="signup-password" placeholder="Password (min 6 chars)" class="w-full border rounded px-3 py-2 mb-3" />
+          <button onclick="handleSignup()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full transition">Sign Up</button>
+        </div>
+      </div>
+      <div class="flex justify-between items-center mt-4">
+        <p class="text-sm text-gray-500">After login, your admin status will be verified.</p>
+        <button id="logout-auth-btn" class="text-red-600 text-sm hover:underline">Logout</button>
+      </div>
+    </div>
+
+    <!-- ==================== REGISTRATION SECTION (Create/Complete Admin + School) ==================== -->
+    <div id="registration-section" class="hidden bg-white rounded-lg shadow-md p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 id="reg-heading" class="text-xl font-semibold text-gray-800">📝 School Registration</h2>
+        <button id="logout-reg-btn" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">Logout</button>
+      </div>
+      <div class="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4 text-sm text-blue-700">
+        <p>ℹ️ Complete this form to set up your school admin account. After submission, your school will be reviewed by an administrator.</p>
+      </div>
+      <div id="reg-response" class="hidden mb-4"></div>
+      <div id="response-message"></div>
+      <div id="reg-form-container">
+        <form id="school-registration-form">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">School Name *</label>
+              <input type="text" id="schoolName" required class="mt-1 w-full border rounded px-3 py-2" placeholder="e.g., National Pathshala" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">IEMIS Code (optional)</label>
+              <input type="text" id="iemisCode" class="mt-1 w-full border rounded px-3 py-2" placeholder="Numeric, 5-15 digits" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">User Name *</label>
+              <input type="text" id="userName" required class="mt-1 w-full border rounded px-3 py-2" placeholder="Admin full name" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Email (from account) *</label>
+              <input type="email" id="email-display" readonly value="" class="mt-1 w-full border rounded px-3 py-2 bg-gray-50" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Phone Number *</label>
+              <input type="tel" id="phoneNumber" required class="mt-1 w-full border rounded px-3 py-2" placeholder="e.g., 9800000000 or +977-9800000000" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700">School Address *</label>
+              <input type="text" id="schoolAddress" required class="mt-1 w-full border rounded px-3 py-2" placeholder="Full address" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-gray-700">School Logo URL (optional)</label>
+              <input type="text" id="schoolLogo" class="mt-1 w-full border rounded px-3 py-2" placeholder="https://example.com/logo.png" />
+            </div>
+          </div>
+          <div class="mt-6">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded shadow transition w-full md:w-auto">Submit Registration</button>
+          </div>
+        </form>
+      </div>
+      <div id="reg-response-message"></div>
+    </div>
+
+    <!-- ==================== PROFILE SECTION (Both user & approved school exist) ==================== -->
+    <div id="profile-section" class="hidden bg-white rounded-lg shadow-md p-6">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">🏆 School Dashboard</h2>
+        <button id="logout-profile-btn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm font-medium">Logout</button>
+      </div>
+      <div class="flex flex-col md:flex-row gap-8">
+        <!-- Logo area -->
+        <div class="flex-shrink-0 flex justify-center">
+          <img id="profile-logo" class="hidden w-40 h-40 object-cover rounded-full border-4 border-indigo-200 shadow-md" alt="School Logo" />
+          <div id="profile-logo-placeholder" class="w-40 h-40 bg-gray-200 rounded-full flex items-center justify-center text-gray-400 border-4 border-indigo-200">
+            <span class="text-4xl">🏫</span>
+          </div>
+        </div>
+        <!-- Details -->
+        <div class="flex-grow">
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500 uppercase font-semibold">School Name</p>
+              <p id="profile-school-name" class="text-lg font-medium text-gray-800">—</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500 uppercase font-semibold">Email</p>
+              <p id="profile-email" class="text-lg font-medium text-gray-800">—</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500 uppercase font-semibold">Phone Number</p>
+              <p id="profile-phone" class="text-lg font-medium text-gray-800">—</p>
+            </div>
+            <div class="bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500 uppercase font-semibold">IEMIS Code</p>
+              <p id="profile-iemis" class="text-lg font-medium text-gray-800">—</p>
+            </div>
+            <div class="md:col-span-2 bg-gray-50 p-3 rounded-lg">
+              <p class="text-xs text-gray-500 uppercase font-semibold">Address</p>
+              <p id="profile-address" class="text-lg font-medium text-gray-800">—</p>
+            </div>
+          </div>
+          <div class="mt-4 text-sm text-gray-500 border-t pt-3">
+            <p>Logged in as: <span id="profile-user-email" class="font-medium text-gray-700"></span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PENDING APPROVAL SECTION ==================== -->
+    <div id="pending-section" class="hidden bg-white rounded-lg shadow-md p-8 text-center">
+      <div class="flex justify-end">
+        <button id="logout-pending-btn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm font-medium">Logout</button>
+      </div>
+      <div class="py-8">
+        <div class="text-6xl mb-4">⏳</div>
+        <h2 class="text-2xl font-bold text-amber-600 mb-2">Pending Approval</h2>
+        <p id="pending-message" class="text-gray-600 max-w-md mx-auto">Your school registration is pending approval. Please wait for the admin to approve your school account.</p>
+        <div class="mt-6 bg-blue-50 p-4 rounded-lg inline-block text-sm text-blue-700">
+          You will receive access to the dashboard once approved.
+        </div>
+      </div>
+    </div>
+
+    <footer class="text-center text-gray-400 text-xs mt-8">
+      Secure School Admin Portal | Backend: /school_admin/login + /api/register-school
+    </footer>
+  </div>
+  <script>
+    // Dynamically set the email display in registration form when user is logged in
+    // This is handled inside onAuthStateChanged but we also need to update the read-only email field when registration section becomes visible.
+    // We'll add a small observer or just update before showing.
+    const originalCheck = window.checkSchoolAdminStatus;
+    // Override to also update email field in reg form when needed
+    const emailDisplayInput = document.getElementById('email-display');
+    onAuthStateChanged(auth, (user) => {
+      if (user && emailDisplayInput) {
+        emailDisplayInput.value = user.email;
+      }
+    });
+  </script>
+</body>
+</html>
