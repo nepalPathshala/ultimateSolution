@@ -702,6 +702,9 @@ window.setDoc = setDoc;
 
     // Load classes in background — UI already visible
     await populateClassesDropdown();
+
+    // Init upload post panel (only shows if user is an approved tutor)
+    await initUploadPostPanel();
         }
         
         // Reset to login screen
