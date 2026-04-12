@@ -1075,7 +1075,7 @@
             isLoadingMore = true;
             if (append) loadingIndicator.style.display = 'block';
             let url = `${API_BASE}/api/posts?classId=${encodeURIComponent(selectedClassId)}&subjectId=${encodeURIComponent(selectedSubjectId)}&tutorId=${encodeURIComponent(selectedTutorId)}&limit=${DEFAULT_LIMIT}`;
-            if (cursor) url += `&cursor=${encodeURIComponent(JSON.stringify(cursor))}`;
+            if (cursor) url += `&cursor=${encodeURIComponent(cursor)}`;
             const data = await fetchJSON(url, "Failed to load posts");
             isLoadingMore = false;
             loadingIndicator.style.display = 'none';
@@ -1112,9 +1112,9 @@
             postsContainer.innerHTML = '<div class="loader"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>';
             const url = `${API_BASE}/filter-posts?classId=${encodeURIComponent(selectedClassId)}&subjectId=${encodeURIComponent(selectedSubjectId)}&chapterId=${encodeURIComponent(selectedChapterId)}&tutorId=${encodeURIComponent(selectedTutorId)}`;
             const data = await fetchJSON(url, "Failed to load posts.");
-            if (data && Array.isArray(data)) renderPosts(data);
-            else if (data && data.posts && Array.isArray(data.posts)) renderPosts(data.posts);
-            else renderPosts([]);
+            if (data && Array.isArray(data.data)) renderPosts(data.data);
+else if (data && Array.isArray(data)) renderPosts(data);
+else renderPosts([]);
         }
 
         // --- DROPDOWN POPULATION (chapter & tutor) ---
