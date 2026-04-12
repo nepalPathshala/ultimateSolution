@@ -1200,8 +1200,7 @@ else renderPosts([]);
             tutorWrapper.id = 'tutorSelectWrapper';
             filterContainer.appendChild(tutorWrapper);
             
-            await populateTutorSelect();    // tutor dropdown, pre‑selected from URL
-            await populateChapterSelect();  // chapter dropdown
+            await Promise.all([populateTutorSelect(), populateChapterSelect()]);
         }
 
         // ---------- SMART HEADER (FIXED GAP ON REVEAL) ----------
@@ -1263,7 +1262,7 @@ else renderPosts([]);
             // User is authenticated – proceed with app initialisation
             try {
                 // Pre‑fetch token to ensure it's valid
-                await user.getIdToken(true);
+                await user.getIdToken();
             } catch (e) {
                 window.location.href = 'auth1.html';
                 return;
@@ -1271,23 +1270,23 @@ else renderPosts([]);
 
             // Initialise UI and data
             initSmartHeader();
-            setupInfiniteScroll();
-            await buildFilterUI();
-            document.addEventListener('click', function(e) { if (!e.target.closest('.custom-select-wrapper')) closeAllDropdowns(); });
+setupInfiniteScroll();
 
-            currentFeedMode = 'paginated';
-            clearPosts();
-            postsContainer.innerHTML = '<div class="loader"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>';
+currentFeedMode = 'paginated';
+postsContainer.innerHTML = '<div class="loader">...</div>';
 
-            // Load posts for the tutor from URL (or show empty if missing)
-            if (selectedClassId && selectedSubjectId && selectedTutorId) {
-                await fetchPaginatedPosts(null, false);
-            } else {
-                showEmptyPostsMessage();
-            }
+// Run UI build and posts fetch in parallel
+const tasks = [buildFilterUI()];
+if (selectedClassId && selectedSubjectId && selectedTutorId) {
+    tasks.push(fetchPaginatedPosts(null, false));
+} else {
+    showEmptyPostsMessage();
+}
 
-            initialDataLoaded = true;
-            checkHideLoadingOverlay();
+await Promise.all(tasks);
+
+initialDataLoaded = true;
+checkHideLoadingOverlay();
         });
 
         // In case auth state takes time, we already have loading overlay visible.
