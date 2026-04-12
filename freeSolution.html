@@ -10,7 +10,7 @@
     tailwind.config = { darkMode: 'media' }
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -677,24 +677,26 @@
         // ======================== API CONFIGURATION ========================
         const API_BASE = "https://dilshadalmm-yosv.onrender.com";
         // ── SESSION LISTENER ──
-         function startSessionListener() {
+         function startSessionListener(user) {
     const localSessionId = localStorage.getItem('sessionId');
-    const uid = localStorage.getItem('uid');
-    if (!localSessionId || !uid) return;
+    const uid = user.uid;
 
-    let isFirstSnapshot = true;
+    if (!localSessionId) {
+        showToast('Session expired. Please sign in again.', true);
+        setTimeout(() => {
+            auth.signOut();
+            window.location.href = 'auth1.html';
+        }, 2000);
+        return;
+    }
 
     const unsubscribe = firebase.firestore()
         .collection('users')
         .doc(uid)
         .onSnapshot((doc) => {
-            if (isFirstSnapshot) {
-                isFirstSnapshot = false;
-                return;
-            }
             if (!doc.exists) return;
             const firestoreSessionId = doc.data().sessionId;
-            if (firestoreSessionId !== localSessionId) {
+            if (firestoreSessionId && firestoreSessionId !== localSessionId) {
                 unsubscribe();
                 localStorage.removeItem('sessionId');
                 localStorage.removeItem('uid');
@@ -707,7 +709,7 @@
         }, (err) => {
             console.warn('Session listener error', err);
         });
-         }
+}
         // --- READ CLASS, SUBJECT & TUTOR FROM URL PARAMETERS ---
         const urlParams = new URLSearchParams(window.location.search);
         let selectedClassId = urlParams.get('classId') || null;
