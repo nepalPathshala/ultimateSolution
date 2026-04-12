@@ -448,7 +448,7 @@
 
         /* Timestamp and tutor info styles - forced two lines */
         .timestamp-text {
-            font-size: 1.00rem;
+            font-size: 1.20rem;
             font-weight: 500;
             display: block;
             width: 100%;
@@ -459,7 +459,7 @@
             line-height: 1.4;
         }
         .tutor-info {
-            font-size: 1.00rem;
+            font-size: 1.20rem;
             font-weight: 500;
             display: block;
             width: 100%;
@@ -1066,8 +1066,7 @@
             titleEl.className = "text-3xl font-extrabold text-gray-900 mb-4 tracking-tight leading-tight uppercase title-underline";
             const descEl = document.createElement('p');
             descEl.textContent = postSubtle || "No additional details.";
-            descEl.className = "text-lg mb-3 font-normal opacity-90";
-            descEl.style.color = "#4b5563";
+            descEl.className = "text-lg text-gray-600 mb-3 font-normal opacity-90";
             const timeDisplay = document.createElement('div');
             timeDisplay.className = "timestamp-text";
             timeDisplay.textContent = formatCreatedAt(createdAt);
