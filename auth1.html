@@ -630,19 +630,23 @@
         
         // Show post-login panel
         async function showPostLoginPanel(user) {
-            currentFirebaseUser = user;
-            loginRegisterContainer.classList.add('hidden');
-            postLoginPanel.classList.remove('hidden');
-            selectedClassId = null;
-            selectedSubjectId = null;
-            selectedTutorId = null;
-            await populateClassesDropdown();
-            const emptySubject = buildCustomSelect([], '-- Select Class First --', null, () => {});
-            subjectSelectWrapper.innerHTML = '';
-            subjectSelectWrapper.appendChild(emptySubject);
-            const emptyTutor = buildCustomSelect([], '-- Select Subject First --', null, () => {});
-            tutorSelectWrapper.innerHTML = '';
-            tutorSelectWrapper.appendChild(emptyTutor);
+    currentFirebaseUser = user;
+    loginRegisterContainer.classList.add('hidden');
+    postLoginPanel.classList.remove('hidden');
+    selectedClassId = null;
+    selectedSubjectId = null;
+    selectedTutorId = null;
+
+    // Show empty dropdowns immediately — no waiting
+    const emptySubject = buildCustomSelect([], '-- Select Class First --', null, () => {});
+    subjectSelectWrapper.innerHTML = '';
+    subjectSelectWrapper.appendChild(emptySubject);
+    const emptyTutor = buildCustomSelect([], '-- Select Subject First --', null, () => {});
+    tutorSelectWrapper.innerHTML = '';
+    tutorSelectWrapper.appendChild(emptyTutor);
+
+    // Load classes in background — UI already visible
+    await populateClassesDropdown();
         }
         
         // Reset to login screen
