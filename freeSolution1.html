@@ -516,12 +516,14 @@
                 background-color: #2563eb;
                 color: white;
             }
-            #dynamic-sections-container {
-                background-image: linear-gradient(to right, transparent calc(50% - 1px), #1f2937 calc(50% - 1px), #1f2937 calc(50%), transparent calc(50%));
-            }
             #dynamic-sections-container > section {
-                border-bottom-color: transparent;
-            }
+    border-bottom-color: transparent;
+}
+@media (min-width: 768px) {
+    #dynamic-sections-container {
+        background-image: linear-gradient(to right, transparent calc(50% - 1px), #1f2937 calc(50% - 1px), #1f2937 calc(50%), transparent calc(50%));
+    }
+}
             @media (min-width: 768px) {
                 #dynamic-sections-container > section {
                     border-right-color: #1f2937;
