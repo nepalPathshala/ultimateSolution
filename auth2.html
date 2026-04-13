@@ -13,7 +13,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyC6NRjkwiazA-aYF4okvnLW4qpCyMg8O9E",
@@ -28,9 +28,9 @@ import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-window.db = db;
-window.doc = doc;
-window.setDoc = setDoc;
+        window.db = db;
+        window.doc = doc;
+        window.setDoc = setDoc;
         window.auth = auth;
         window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
         window.signInWithEmailAndPassword = signInWithEmailAndPassword;
@@ -286,6 +286,11 @@ window.setDoc = setDoc;
                 color: #94a3b8 !important;
             }
         }
+        /* Underline for Upload Post heading */
+        .upload-heading-underline {
+            text-decoration: underline;
+            text-underline-offset: 6px;
+        }
     </style>
 </head>
 <body>
@@ -373,35 +378,11 @@ window.setDoc = setDoc;
             </section>
         </div>
 
-        <!-- POST-LOGIN PANEL: Class + Subject + Tutor selection -->
-        <div id="postLoginPanel" class="hidden w-full max-w-md mx-auto mt-8 p-6 md:p-8">
-            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-6 flex items-center justify-center">
-                <span class="w-2 h-8 bg-purple-500 rounded-full mr-3"></span>
-                SELECT YOUR PATH
-            </h2>
-            <!-- Class dropdown -->
-            <div class="form-label">SELECT CLASS</div>
-            <div id="classSelectWrapper" class="mb-6"></div>
-            <!-- Subject dropdown -->
-            <div class="form-label">SELECT SUBJECT</div>
-            <div id="subjectSelectWrapper" class="mb-6"></div>
-            <!-- Tutor dropdown (new) -->
-            <div class="form-label">SELECT TUTOR</div>
-            <div id="tutorSelectWrapper" class="mb-6"></div>
-            
-            <button id="continueSelectionBtn" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition duration-200 shadow-md flex items-center justify-center">
-                Continue to Dashboard
-            </button>
-            <button id="backToLoginFromPanel" class="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 underline mt-4">
-                ← Back to Sign In
-            </button>
-        </div>
-
-        <!-- ADMIN UPLOAD POST PANEL -->
+        <!-- ADMIN UPLOAD POST PANEL (renamed & underlined) -->
         <div id="uploadPostPanel" class="hidden w-full max-w-md mx-auto mt-8 p-6 md:p-8">
-            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-6 flex items-center justify-center">
+            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-6 flex items-center justify-center upload-heading-underline">
                 <span class="w-2 h-8 bg-orange-500 rounded-full mr-3"></span>
-                ADMIN || UPLOAD POST
+                Upload Post
             </h2>
             <!-- Class -->
             <div class="form-label">SELECT CLASS</div>
@@ -428,8 +409,11 @@ window.setDoc = setDoc;
             <button id="uploadPostBtn" class="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-lg transition duration-200 shadow-md flex items-center justify-center">
                 Upload Post
             </button>
+            <button id="backToLoginFromUpload" class="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 underline mt-4">
+                ← Back to Sign In
+            </button>
         </div>
-                </main>
+    </main>
 
     <!-- Toast Notification -->
     <div id="customToast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0 z-50 toast-notification bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-semibold text-base border border-red-400">
@@ -445,22 +429,15 @@ window.setDoc = setDoc;
         
         // Global state
         let currentFirebaseUser = null;
-        let selectedClassId = null;
-        let selectedSubjectId = null;
-        let selectedTutorId = null;
         
         // DOM elements
         const loginRegisterContainer = document.getElementById('loginRegisterContainer');
         const signInSection = document.getElementById('signInSection');
         const signUpSection = document.getElementById('signUpSection');
-        const postLoginPanel = document.getElementById('postLoginPanel');
-        const classSelectWrapper = document.getElementById('classSelectWrapper');
-        const subjectSelectWrapper = document.getElementById('subjectSelectWrapper');
-        const tutorSelectWrapper = document.getElementById('tutorSelectWrapper');
-        const continueBtn = document.getElementById('continueSelectionBtn');
-        const backToLoginFromPanelBtn = document.getElementById('backToLoginFromPanel');
+        const uploadPostPanel = document.getElementById('uploadPostPanel');
         const showSignUpBtn = document.getElementById('showSignUpBtn');
         const backToLoginBtn = document.getElementById('backToLoginBtn');
+        const backToLoginFromUpload = document.getElementById('backToLoginFromUpload');
         
         // Helper: Toast
         function showToast(message, isError = true) {
@@ -577,160 +554,6 @@ window.setDoc = setDoc;
             return wrapper;
         }
         
-        // ======================== API INTEGRATION ========================
-        async function populateClassesDropdown() {
-            if (!classSelectWrapper) return;
-            classSelectWrapper.innerHTML = '<div class="flex justify-center py-4"><div class="loader border-gray-400"></div></div>';
-            const token = await getCurrentToken();
-            if (!token) {
-                showToast("Authentication token missing", true);
-                classSelectWrapper.innerHTML = '';
-                return;
-            }
-            const data = await fetchJSON(`${API_BASE}/classes`, token, "Failed to load classes");
-            let options = [];
-            if (data && Array.isArray(data)) {
-                // endpoint returns [{ classId, className }]
-                options = data.map(c => ({ value: c.classId, label: c.className }));
-            }
-            const selectComp = buildCustomSelect(options, '-- Select Class --', selectedClassId, async (classId, className) => {
-                selectedClassId = classId;
-                selectedSubjectId = null;
-                selectedTutorId = null;
-                await populateSubjectsDropdown(selectedClassId);
-                // Clear tutor dropdown
-                const emptyTutor = buildCustomSelect([], '-- Select Subject First --', null, () => {});
-                tutorSelectWrapper.innerHTML = '';
-                tutorSelectWrapper.appendChild(emptyTutor);
-            });
-            classSelectWrapper.innerHTML = '';
-            classSelectWrapper.appendChild(selectComp);
-        }
-        
-        async function populateSubjectsDropdown(classId) {
-            if (!subjectSelectWrapper) return;
-            if (!classId) {
-                const emptySelect = buildCustomSelect([], '-- Select Class First --', null, () => {});
-                subjectSelectWrapper.innerHTML = '';
-                subjectSelectWrapper.appendChild(emptySelect);
-                return;
-            }
-            subjectSelectWrapper.innerHTML = '<div class="flex justify-center py-4"><div class="loader border-gray-400"></div></div>';
-            const token = await getCurrentToken();
-            if (!token) {
-                showToast("Authentication token missing", true);
-                subjectSelectWrapper.innerHTML = '';
-                return;
-            }
-            const url = `${API_BASE}/subjects?classId=${encodeURIComponent(classId)}`;
-            const data = await fetchJSON(url, token, "Failed to load subjects");
-            let options = [];
-            if (data && Array.isArray(data)) {
-                options = data.map(s => ({ value: s.subjectId, label: s.subjectName }));
-            }
-            const selectComp = buildCustomSelect(options, '-- Select Subject --', selectedSubjectId, async (subjectId, subjectName) => {
-                selectedSubjectId = subjectId;
-                selectedTutorId = null;
-                await populateTutorsDropdown(selectedClassId, selectedSubjectId);
-            });
-            subjectSelectWrapper.innerHTML = '';
-            subjectSelectWrapper.appendChild(selectComp);
-        }
-        
-        async function populateTutorsDropdown(classId, subjectId) {
-            if (!tutorSelectWrapper) return;
-            if (!classId || !subjectId) {
-                const emptySelect = buildCustomSelect([], '-- Select Class & Subject First --', null, () => {});
-                tutorSelectWrapper.innerHTML = '';
-                tutorSelectWrapper.appendChild(emptySelect);
-                return;
-            }
-            tutorSelectWrapper.innerHTML = '<div class="flex justify-center py-4"><div class="loader border-gray-400"></div></div>';
-            const token = await getCurrentToken();
-            if (!token) {
-                showToast("Authentication token missing", true);
-                tutorSelectWrapper.innerHTML = '';
-                return;
-            }
-            const url = `${API_BASE}/tutors?classId=${encodeURIComponent(classId)}&subjectId=${encodeURIComponent(subjectId)}`;
-            const data = await fetchJSON(url, token, "Failed to load tutors");
-            let options = [];
-            if (data && Array.isArray(data)) {
-                options = data.map(t => ({ value: t.tutorId, label: t.tutorName }));
-            }
-            const selectComp = buildCustomSelect(options, '-- Select Tutor --', selectedTutorId, (tutorId, tutorName) => {
-                selectedTutorId = tutorId;
-            });
-            tutorSelectWrapper.innerHTML = '';
-            tutorSelectWrapper.appendChild(selectComp);
-        }
-        
-        // Show post-login panel
-        async function showPostLoginPanel(user) {
-    currentFirebaseUser = user;
-            
-           // ── SESSION: Generate & save sessionId ──
-    try {
-    showToast('Step 1: Generating session...', false);
-    await user.getIdToken(true); // ← ensure auth token is fresh
-    const sessionId = crypto.randomUUID();
-    localStorage.setItem('sessionId', sessionId);
-    localStorage.setItem('uid', user.uid);
-    showToast('Step 2: Saving to Firestore...', false);
-    await window.setDoc(
-        window.doc(window.db, 'users', user.uid),
-        { sessionId }
-    );
-    showToast('Step 3: Session saved!', false);
-} catch(e) {
-    showToast('Error: ' + e.message, true);
-    }
- 
-    loginRegisterContainer.classList.add('hidden');
-    postLoginPanel.classList.remove('hidden');
-    selectedClassId = null;
-    selectedSubjectId = null;
-    selectedTutorId = null;
-
-    // Show empty dropdowns immediately — no waiting
-    const emptySubject = buildCustomSelect([], '-- Select Class First --', null, () => {});
-    subjectSelectWrapper.innerHTML = '';
-    subjectSelectWrapper.appendChild(emptySubject);
-    const emptyTutor = buildCustomSelect([], '-- Select Subject First --', null, () => {});
-    tutorSelectWrapper.innerHTML = '';
-    tutorSelectWrapper.appendChild(emptyTutor);
-
-    // Load classes in background — UI already visible
-    await populateClassesDropdown();
-
-    // Init upload post panel (only shows if user is an approved tutor)
-    await initUploadPostPanel();
-        }
-        
-        // Reset to login screen
-        async function resetToLogin() {
-            try {
-                await window.signOut(window.auth);
-            } catch(e) { console.warn(e); }
-            currentFirebaseUser = null;
-            selectedClassId = null;
-            selectedSubjectId = null;
-            selectedTutorId = null;
-            loginRegisterContainer.classList.remove('hidden');
-            postLoginPanel.classList.add('hidden');
-            signInSection.classList.remove('hidden');
-            signUpSection.classList.add('hidden');
-            document.getElementById('loginEmail').value = '';
-            document.getElementById('loginPassword').value = '';
-            document.getElementById('regName').value = '';
-            document.getElementById('regEmail').value = '';
-            document.getElementById('regPassword').value = '';
-            document.getElementById('regConfirmPassword').value = '';
-            document.getElementById('imageInput').value = '';
-            document.getElementById('profilePreview').style.display = 'none';
-            document.getElementById('uploadPlaceholder').style.opacity = '1';
-            document.getElementById('file-name').textContent = '--Upload Profile Photo--';
-        }
         // ======================== UPLOAD POST SECTION ========================
         let uploadSelectedClassId = null;
         let uploadSelectedSubjectId = null;
@@ -885,17 +708,71 @@ window.setDoc = setDoc;
             }
         }
 
-        document.getElementById('uploadPostBtn').addEventListener('click', handleUploadPost);
-
-        function redirectToFreeSolution() {
-            if (!selectedClassId || !selectedSubjectId || !selectedTutorId) {
-                showToast('Please select CLASS, SUBJECT and TUTOR before continuing', true);
-                return;
+        // ======================== NEW: Direct upload panel after login ========================
+        async function showUploadPanelForUser(user) {
+            currentFirebaseUser = user;
+            
+            // Save sessionId (existing logic)
+            try {
+                const sessionId = crypto.randomUUID();
+                localStorage.setItem('sessionId', sessionId);
+                localStorage.setItem('uid', user.uid);
+                await window.setDoc(window.doc(window.db, 'users', user.uid), { sessionId });
+            } catch(e) {
+                console.warn('Session save error:', e);
             }
-            const url = `https://nepalpathshala.github.io/ultimateSolution/freeSolution.html?classId=${encodeURIComponent(selectedClassId)}&subjectId=${encodeURIComponent(selectedSubjectId)}&tutorId=${encodeURIComponent(selectedTutorId)}`;
-            window.location.href = url;
+
+            // Hide login/register container
+            loginRegisterContainer.classList.add('hidden');
+            // Initialize and show upload panel if tutor
+            await initUploadPostPanel();
+            // If user is not a tutor, uploadPostPanel remains hidden (user sees empty space – but that's consistent with original)
         }
-        
+
+        // Reset to login screen
+        async function resetToLogin() {
+            try {
+                await window.signOut(window.auth);
+            } catch(e) { console.warn(e); }
+            currentFirebaseUser = null;
+            uploadSelectedClassId = null;
+            uploadSelectedSubjectId = null;
+            uploadSelectedChapterId = null;
+            tutorProfile = null;
+            loginRegisterContainer.classList.remove('hidden');
+            uploadPostPanel.classList.add('hidden');
+            signInSection.classList.remove('hidden');
+            signUpSection.classList.add('hidden');
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('regName').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regConfirmPassword').value = '';
+            document.getElementById('imageInput').value = '';
+            document.getElementById('profilePreview').style.display = 'none';
+            document.getElementById('uploadPlaceholder').style.opacity = '1';
+            document.getElementById('file-name').textContent = '--Upload Profile Photo--';
+        }
+
+        // ======================== AUTH STATE OBSERVER (Auto-login) ========================
+        window.auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                // User is signed in.
+                if (user.emailVerified) {
+                    await showUploadPanelForUser(user);
+                } else {
+                    // Email not verified – sign out and show login with message
+                    await window.signOut(window.auth);
+                    resetToLogin();
+                    showToast('Please verify your email first.', true);
+                }
+            } else {
+                // No user signed in
+                resetToLogin();
+            }
+        });
+
         // ======================== EVENT LISTENERS ========================
         showSignUpBtn.addEventListener('click', () => {
             signInSection.classList.add('hidden');
@@ -905,6 +782,10 @@ window.setDoc = setDoc;
         backToLoginBtn.addEventListener('click', () => {
             signUpSection.classList.add('hidden');
             signInSection.classList.remove('hidden');
+        });
+
+        backToLoginFromUpload.addEventListener('click', async () => {
+            await resetToLogin();
         });
         
         // Login handler
@@ -927,7 +808,7 @@ window.setDoc = setDoc;
                     setButtonLoading(loginBtn, false);
                     return;
                 }
-                await showPostLoginPanel(user);
+                // Auth state observer will handle redirection
                 setButtonLoading(loginBtn, false);
             } catch (error) {
                 console.error(error);
@@ -1021,16 +902,13 @@ window.setDoc = setDoc;
             }
         });
         
-        continueBtn.addEventListener('click', redirectToFreeSolution);
-        backToLoginFromPanelBtn.addEventListener('click', async () => {
-            await resetToLogin();
-        });
+        document.getElementById('uploadPostBtn').addEventListener('click', handleUploadPost);
         
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.custom-select-wrapper')) closeAllDropdowns();
         });
         
-        // Initial UI state
+        // Initial UI state (will be overridden by auth observer, but set as fallback)
         signInSection.classList.remove('hidden');
         signUpSection.classList.add('hidden');
     </script>
