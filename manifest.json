@@ -1,7 +1,7 @@
 {
   "name": "Ultimate Solution",
   "short_name": "Solution",
-  "start_url": "/freeSolution1.html",
+  "start_url": "/freeSolution.html",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#1f2937",
