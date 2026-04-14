@@ -2002,10 +2002,22 @@ else renderPosts([]);
                     mediaContainer.appendChild(svgPlay);
 
                     // Click to launch SimpleYouTubePlayer
-                    mediaContainer.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if (mediaContainer.dataset.playerInitialized === "true") return;
-                        mediaContainer.dataset.playerInitialized = "true";
+    mediaContainer.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (mediaContainer.dataset.playerInitialized === "true") return;
+    mediaContainer.dataset.playerInitialized = "true";
+
+    // Pause all other active players before launching this one
+    for (let [otherContainer, otherPlayer] of activePlayersMap.entries()) {
+        if (otherContainer !== mediaContainer) {
+            try {
+                if (otherPlayer && otherPlayer.player &&
+                    typeof otherPlayer.player.pauseVideo === 'function') {
+                    otherPlayer.player.pauseVideo();
+                }
+            } catch (err) { /* ignore */ }
+        }
+    }
 
                         // Clear thumbnail state
                         mediaContainer.innerHTML = '';
