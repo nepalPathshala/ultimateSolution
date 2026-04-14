@@ -1104,7 +1104,7 @@
                 showToast('Logged in on another device. Signing out...', true);
                 setTimeout(() => {
                     auth.signOut();
-                    window.location.href = 'auth1.html';
+                    window.location.href = '/auth/';
                 }, 2000);
             }
         }, (err) => {
@@ -1221,13 +1221,13 @@
                 const response = await fetch(url, { ...options, headers });
                 if (response.status === 401 || response.status === 403) {
                     // Token invalid / expired → redirect to login
-                    window.location.href = 'auth1.html';
+                    window.location.href = '/auth/';
                     throw new Error('Authentication required');
                 }
                 return response;
             } catch (error) {
                 if (error.message === 'User not authenticated') {
-                    window.location.href = 'auth1.html';
+                    window.location.href = '/auth/';
                 }
                 throw error;
             }
@@ -2465,8 +2465,8 @@ else renderPosts([]);
         // ======================== AUTH & INIT ========================
         auth.onAuthStateChanged(async (user) => {
             if (!user) {
-                // Not logged in → redirect to auth1.html
-                window.location.href = 'auth1.html';
+                // Not logged in → redirect to /auth/
+                window.location.href = '/auth/';
                 return;
             }
 
@@ -2475,7 +2475,7 @@ else renderPosts([]);
                 // Pre‑fetch token to ensure it's valid
                 await user.getIdToken();
             } catch (e) {
-                window.location.href = 'auth1.html';
+                window.location.href = '/auth/';
                 return;
             }
 
