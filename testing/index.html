@@ -54,7 +54,39 @@
         main::-webkit-scrollbar {
             display: none;
         }
-
+        /* Desktop two-column independent scroll */
+        @media (min-width: 768px) {
+            main {
+                overflow: hidden !important;
+            }
+            #desktopColumns {
+                flex-direction: row !important;
+                border-top: 1px solid #e2e8f0;
+            }
+            #filterColumn {
+                width: 300px;
+                min-width: 260px;
+                max-width: 320px;
+                flex-shrink: 0;
+                border-right: 1px solid #e2e8f0;
+                height: 100%;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+            #filterColumn::-webkit-scrollbar { display: none; }
+            #postsColumn {
+                flex: 1;
+                height: 100%;
+                overflow-y: auto;
+                overflow-x: hidden;
+                display: block !important;
+            }
+            #postsColumn::-webkit-scrollbar { display: none; }
+        }
+        @media (prefers-color-scheme: dark) {
+            #desktopColumns { border-top-color: #1f2937; }
+            #filterColumn { border-right-color: #1f2937; }
+        }
         /* Smart sticky header — improved transition and explicit top */
         header {
             position: fixed;
@@ -312,23 +344,7 @@
             padding-bottom: 0;
             margin-bottom: 0;
         }
-        @media (min-width: 768px) {
-            #dynamic-sections-container {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                column-gap: 4rem;
-                row-gap: 2rem;
-                background-image: linear-gradient(to right, transparent calc(50% - 1px), #e2e8f0 calc(50% - 1px), #e2e8f0 calc(50%), transparent calc(50%));
-            }
-            #dynamic-sections-container > section {
-                border: none;
-                padding: 0;
-                margin: 0;
-            }
-            #dynamic-sections-container > section:nth-last-child(2):not(:last-child) {
-                border-bottom: none;
-            }
-        }
+        
 
         /* New spacing: exactly 20px from header bottom to filter form top */
         .main-content-wrapper {
@@ -1103,22 +1119,28 @@
     </header>
 
     <main>
-        <div class="max-w-3xl md:max-w-6xl mx-auto px-4 md:px-6 main-content-wrapper">
-            <div id="filterFormContainer" class="filter-blue-bg"></div>
-           <hr class="border-t border-gray-200 dark:border-gray-700 my-6 mx-4">
-            <div id="dynamic-sections-container">
-                <!-- Posts will be dynamically inserted here -->
-            </div>
-            <!-- Sentinel for infinite scroll -->
-            <div id="scrollSentinel" class="scroll-sentinel"></div>
-            <div id="loadingIndicator" class="loading-indicator" style="display: none;">
-                <div class="loader">
-                    <div class="loader-dot"></div>
-                    <div class="loader-dot"></div>
-                    <div class="loader-dot"></div>
+        <div class="max-w-3xl md:max-w-6xl mx-auto px-4 md:px-6 main-content-wrapper" style="height:100%;display:flex;flex-direction:column;">
+            <div id="desktopColumns" style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+                <!-- Column 1: Filter (becomes left column on desktop) -->
+                <div id="filterColumn" style="-ms-overflow-style:none;scrollbar-width:none;">
+                    <div id="filterFormContainer" class="filter-blue-bg"></div>
+                </div>
+                <!-- Column 2: Posts (becomes right column on desktop) -->
+                <div id="postsColumn" style="-ms-overflow-style:none;scrollbar-width:none;">
+                    <div id="dynamic-sections-container">
+                        <!-- Posts will be dynamically inserted here -->
+                    </div>
+                    <div id="scrollSentinel" class="scroll-sentinel"></div>
+                    <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+                        <div class="loader">
+                            <div class="loader-dot"></div>
+                            <div class="loader-dot"></div>
+                            <div class="loader-dot"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+    </div>
 
         <footer class="py-12 bg-gray-50 dark:bg-gray-900 mt-16 border-t border-gray-200 dark:border-gray-800">
             <div class="max-w-6xl mx-auto px-4 text-center">
@@ -1976,7 +1998,7 @@ if (progressBar) {
             if (infiniteScrollObserver) infiniteScrollObserver.disconnect();
             infiniteScrollObserver = new IntersectionObserver((entries) => {
                 entries.forEach(entry => { if (entry.isIntersecting) handleInfiniteScroll(); });
-            }, { root: document.querySelector('main'), rootMargin: '200px', threshold: 0.1 });
+            }, { root: document.getElementById('postsColumn') || document.querySelector('main'), rootMargin: '200px', threshold: 0.1 });
             if (scrollSentinel) infiniteScrollObserver.observe(scrollSentinel);
         }
 
@@ -2017,7 +2039,7 @@ else renderPosts([]);
             }
             const normalizedPosts = posts.map(normalizePost);
             normalizedPosts.forEach((post, idx) => postsContainer.appendChild(createPostCard(post, idx)));
-            if (!append) { const mainEl = document.querySelector('main'); if (mainEl) mainEl.scrollTop = 0; }
+            if (!append) { const scrollEl = document.getElementById('postsColumn') || document.querySelector('main'); if (scrollEl) scrollEl.scrollTop = 0; }
         }
 
         function createPostCard(post, index) {
@@ -2307,8 +2329,12 @@ else renderPosts([]);
                 }
             }
 
-            mainElement.addEventListener('scroll', onMainScroll);
-            window.addEventListener('resize', updateHeaderPadding);
+            const scrollTarget = window.innerWidth >= 768 ? (document.getElementById('postsColumn') || mainElement) : mainElement;
+            scrollTarget.addEventListener('scroll', onMainScroll);
+            window.addEventListener('resize', () => {
+                updateHeaderPadding();
+            });
+            
 
             // Observe header size changes (e.g., orientation change)
             if (window.ResizeObserver) {
