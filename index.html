@@ -2274,12 +2274,12 @@ else renderPosts([]);
             const data = await fetchJSON(`${API_BASE}/tutors?classId=${encodeURIComponent(selectedClassId)}&subjectId=${encodeURIComponent(selectedSubjectId)}`, "Failed to load tutors");
             let options = [];
             if (data && Array.isArray(data)) options = data.map(t => ({ value: t.tutorId || t.id, label: t.tutorName || t.name }));
-            
-            // Pre‑select tutor from URL if present and not already selected
+
+            // Auto-select first tutor if none selected yet
             if (!selectedTutorId && options.length > 0) {
-                // Fallback: if URL tutorId not found, use first? Better to keep null and show empty.
-                // But we already have selectedTutorId from URL.
+                selectedTutorId = options[0].value;
             }
+            if (!selectedTutorId && options.length > 0) {
 
             const selectComponent = buildCustomSelect(options, 'Select Tutor', selectedTutorId, async (tutorId, tutorName) => {
                 selectedTutorId = tutorId;
@@ -2591,6 +2591,8 @@ else renderPosts([]);
             }
             selectedClassId = classesData[0].classId;
 
+            // Fetch subjects AND tutors in parallel now that we have classId
+            // We don't know subjectId yet for tutors, but we can at least start subjects
             const subjectsData = await fetchJSON(
                 `${API_BASE}/subjects?classId=${encodeURIComponent(selectedClassId)}`,
                 'Failed to auto-load subjects'
@@ -2600,12 +2602,19 @@ else renderPosts([]);
                 return;
             }
             selectedSubjectId = subjectsData[0].subjectId;
-
             // Rebuild filter UI for auto-selected class+subject AND auto-select first tutor in parallel
-            await Promise.all([
-                buildFilterUI(),
-                autoSelectFirstTutorAndFetch()
-            ]);
+            // buildFilterUI already fetches tutors internally via populateTutorSelect.
+            // After it finishes, tutors are populated and selectedTutorId is set — no need
+            // to call autoSelectFirstTutorAndFetch separately.
+            await buildFilterUI();
+            if (selectedTutorId) {
+                currentFeedMode = 'paginated';
+                paginationCursor = null;
+                hasMorePosts = false;
+                await fetchPaginatedPosts(null, false);
+            } else {
+                showEmptyPostsMessage();
+            }
         }
 
         // ======================== AUTH & INIT ========================
@@ -2619,7 +2628,7 @@ else renderPosts([]);
             // User is authenticated – proceed with app initialisation
             try {
                 // Pre‑fetch token to ensure it's valid
-                await user.getIdToken();
+                await user.getIdToken(false);
             } catch (e) {
                 window.location.href = '/auth/';
                 return;
@@ -2629,17 +2638,19 @@ else renderPosts([]);
             initSmartHeader();
             setupInfiniteScroll();
             startSessionListener(user);
-            // Pre-fetch nav data in background (no await — fire and forget)
-            fetchJSON(`${API_BASE}/classes`, 'Failed to pre-load nav').then(async classesData => {
-                if (!classesData || !Array.isArray(classesData)) return;
-                const classesWithSubjects = await Promise.all(
-                    classesData.map(async (cls) => {
-                        const subjects = await fetchJSON(`${API_BASE}/subjects?classId=${encodeURIComponent(cls.classId)}`, '');
-                        return { classId: cls.classId, className: cls.className, subjects: Array.isArray(subjects) ? subjects : [] };
-                    })
-                );
-                navCoursesCache = classesWithSubjects; // cache is ready before user ever opens nav
-            });
+            // Delay nav prefetch until after main content loads to avoid competing for connections
+            setTimeout(() => {
+                fetchJSON(`${API_BASE}/classes`, '').then(async classesData => {
+                    if (!classesData || !Array.isArray(classesData)) return;
+                    const classesWithSubjects = await Promise.all(
+                        classesData.map(async (cls) => {
+                            const subjects = await fetchJSON(`${API_BASE}/subjects?classId=${encodeURIComponent(cls.classId)}`, '');
+                            return { classId: cls.classId, className: cls.className, subjects: Array.isArray(subjects) ? subjects : [] };
+                        })
+                    );
+                    navCoursesCache = classesWithSubjects;
+                });
+            }, 3000);
             document.addEventListener('pointerdown', function(e) { 
                 if (!e.target.closest('.custom-select-wrapper')) closeAllDropdowns(); 
             });
