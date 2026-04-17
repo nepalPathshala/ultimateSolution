@@ -1261,6 +1261,11 @@
 
         let navCoursesCache = null; // cached courses+subjects for nav panel
 
+        // ── STUDENT-ACCESS CACHE CONSTANTS ──
+        const CACHE_KEY = 'student-access-data';
+        const CACHE_TS_KEY = 'student-access-timestamp';
+        const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
         // DOM elements
         const filterContainer = document.getElementById('filterFormContainer');
         const postsContainer = document.getElementById('dynamic-sections-container');
@@ -1377,8 +1382,29 @@
             }
         }
 
-        function buildCustomSelect(options, placeholder, selectedValue, onSelect) {
-            const wrapper = document.createElement('div');
+        // ── CACHE HELPERS ──
+        function saveStudentAccessCache(data) {
+            try {
+                localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                localStorage.setItem(CACHE_TS_KEY, Date.now().toString());
+            } catch (e) { console.warn('Cache write failed', e); }
+        }
+
+        function loadStudentAccessCache() {
+            try {
+                const ts = parseInt(localStorage.getItem(CACHE_TS_KEY) || '0', 10);
+                if (!ts || (Date.now() - ts) > CACHE_TTL_MS) return null;
+                const raw = localStorage.getItem(CACHE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) { return null; }
+        }
+
+        function clearStudentAccessCache() {
+            localStorage.removeItem(CACHE_KEY);
+            localStorage.removeItem(CACHE_TS_KEY);
+        }
+
+        function buildCustomSelect(options, placeholder, selectedValue, onSelect) {const wrapper = document.createElement('div');
             wrapper.className = 'custom-select-wrapper';
             const trigger = document.createElement('div');
             trigger.className = 'custom-select-trigger';
@@ -2575,15 +2601,25 @@ else renderPosts([]);
         async function autoInitOnLoad() {
             // If classId and subjectId already came from URL params, just auto-select tutor
             if (selectedClassId && selectedSubjectId) {
-                // If tutorId already in URL, use it; otherwise auto-select first
                 if (!selectedTutorId) {
                     await autoSelectFirstTutorAndFetch();
                 }
-                // else: tutorId already set from URL, fetchPaginatedPosts will be called by existing logic
                 return;
             }
 
-            // No URL params — fetch first class, then first subject, then first tutor
+            // ── CACHE CHECK: render instantly if cache is warm ──
+            const cached = loadStudentAccessCache();
+            if (cached && cached.classes && cached.subjects) {
+                selectedClassId = cached.classes[0]?.classId || null;
+                selectedSubjectId = cached.subjects[0]?.subjectId || null;
+                if (selectedClassId && selectedSubjectId) {
+                    await Promise.all([buildFilterUI(), autoSelectFirstTutorAndFetch()]);
+                }
+                _backgroundRefreshStudentAccess(); // silent background update
+                return;
+            }
+
+            // ── FIRST VISIT: no cache — fetch, render, save ──
             const classesData = await fetchJSON(`${API_BASE}/classes`, 'Failed to auto-load classes');
             if (!classesData || !Array.isArray(classesData) || classesData.length === 0) {
                 showEmptyPostsMessage();
@@ -2601,13 +2637,34 @@ else renderPosts([]);
             }
             selectedSubjectId = subjectsData[0].subjectId;
 
-            // Rebuild filter UI for auto-selected class+subject AND auto-select first tutor in parallel
-            await Promise.all([
-                buildFilterUI(),
-                autoSelectFirstTutorAndFetch()
-            ]);
+            saveStudentAccessCache({ classes: classesData, subjects: subjectsData });
+
+            await Promise.all([buildFilterUI(), autoSelectFirstTutorAndFetch()]);
+                }
+        
+
+        async function _backgroundRefreshStudentAccess() {
+            try {
+                const classesData = await fetchJSON(`${API_BASE}/classes`, '');
+                if (!classesData || !Array.isArray(classesData)) return;
+                const subjectsData = await fetchJSON(
+                    `${API_BASE}/subjects?classId=${encodeURIComponent(classesData[0]?.classId || '')}`, ''
+                );
+                saveStudentAccessCache({
+                    classes: classesData,
+                    subjects: Array.isArray(subjectsData) ? subjectsData : []
+                });
+                const classesWithSubjects = await Promise.all(
+                    classesData.map(async (cls) => {
+                        const subjects = await fetchJSON(`${API_BASE}/subjects?classId=${encodeURIComponent(cls.classId)}`, '');
+                        return { classId: cls.classId, className: cls.className, subjects: Array.isArray(subjects) ? subjects : [] };
+                    })
+                );
+                navCoursesCache = classesWithSubjects;
+            } catch (e) { /* silent */ }
         }
 
+        // ======================== AUTH & INIT ========================
         // ======================== AUTH & INIT ========================
         auth.onAuthStateChanged(async (user) => {
             if (!user) {
@@ -2629,17 +2686,19 @@ else renderPosts([]);
             initSmartHeader();
             setupInfiniteScroll();
             startSessionListener(user);
-            // Pre-fetch nav data in background (no await — fire and forget)
-            fetchJSON(`${API_BASE}/classes`, 'Failed to pre-load nav').then(async classesData => {
-                if (!classesData || !Array.isArray(classesData)) return;
-                const classesWithSubjects = await Promise.all(
-                    classesData.map(async (cls) => {
-                        const subjects = await fetchJSON(`${API_BASE}/subjects?classId=${encodeURIComponent(cls.classId)}`, '');
-                        return { classId: cls.classId, className: cls.className, subjects: Array.isArray(subjects) ? subjects : [] };
-                    })
-                );
-                navCoursesCache = classesWithSubjects; // cache is ready before user ever opens nav
-            });
+            // Pre-fetch nav data in background — skip if cache already warm
+            if (!navCoursesCache) {
+                fetchJSON(`${API_BASE}/classes`, 'Failed to pre-load nav').then(async classesData => {
+                    if (!classesData || !Array.isArray(classesData)) return;
+                    const classesWithSubjects = await Promise.all(
+                        classesData.map(async (cls) => {
+                            const subjects = await fetchJSON(`${API_BASE}/subjects?classId=${encodeURIComponent(cls.classId)}`, '');
+                            return { classId: cls.classId, className: cls.className, subjects: Array.isArray(subjects) ? subjects : [] };
+                        })
+                    );
+                    navCoursesCache = classesWithSubjects;
+                });
+                                }
             document.addEventListener('pointerdown', function(e) { 
                 if (!e.target.closest('.custom-select-wrapper')) closeAllDropdowns(); 
             });
@@ -2654,6 +2713,7 @@ else renderPosts([]);
                     toggleNavMenu(false);
                     localStorage.removeItem('sessionId');
                     localStorage.removeItem('uid');
+                    clearStudentAccessCache();
                     await auth.signOut();
                     window.location.href = '/auth/';
                 });
