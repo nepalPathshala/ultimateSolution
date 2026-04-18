@@ -2252,11 +2252,25 @@ else renderPosts([]);
             let options = [];
             if (data && Array.isArray(data)) options = data.map(c => ({ value: c.chapterId || c.id, label: c.chapterName || c.name }));
             const selectComponent = buildCustomSelect(options, 'Select Chapter', selectedChapterId, async (chapterId, chapterName) => {
-                if (currentFeedMode === 'filtered') resetToDefaultModeAndClearFilters();
-                selectedChapterId = chapterId;
-                // Chapter changed → load filtered posts immediately (tutor already set)
-                await fetchAndRenderFilteredPosts();
-            });
+    if (currentFeedMode === 'filtered') resetToDefaultModeAndClearFilters();
+    selectedChapterId = chapterId;
+
+    // If no tutor selected yet, auto-select the first tutor before filtering
+    if (!selectedTutorId) {
+        const tutorsData = await fetchJSON(
+            `${API_BASE}/tutors?classId=${encodeURIComponent(selectedClassId)}&subjectId=${encodeURIComponent(selectedSubjectId)}`,
+            'Failed to load tutors'
+        );
+        if (tutorsData && Array.isArray(tutorsData) && tutorsData.length > 0) {
+            selectedTutorId = tutorsData[0].tutorId || tutorsData[0].id;
+            // Refresh tutor dropdown to visually reflect the auto-selection
+            await populateTutorSelect(true);
+        }
+    }
+
+    // Now fetch filtered posts (tutor is guaranteed to be set)
+    await fetchAndRenderFilteredPosts();
+});
             wrapperDiv.innerHTML = '';
             wrapperDiv.appendChild(selectComponent);
         }
