@@ -2099,12 +2099,22 @@ else renderPosts([]);
             descEl.className = "text-lg font-normal";
             descEl.style.cssText = "color:#ffffff;margin:0;opacity:1;font-weight:700;";
             descBox.appendChild(descEl);
-            const timeDisplay = document.createElement('div');
-            timeDisplay.className = "timestamp-text";
-            timeDisplay.textContent = formatCreatedAt(createdAt);
-            const tutorDisplay = document.createElement('div');
-            tutorDisplay.className = "tutor-info";
-            tutorDisplay.textContent = `Tutor — ${tutorName}`;
+            const profileHeader = document.createElement('div');
+            profileHeader.style.cssText = "background:#1e293b;border:1px solid #475569;border-radius:0.5rem;overflow:hidden;margin-bottom:1rem;";
+            profileHeader.innerHTML = `
+                <div style="padding:10px 12px;">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tutoriom" alt="Profile"
+                            style="width:44px;height:44px;border-radius:50%;border:1px solid #94a3b8;background:#334155;flex-shrink:0;">
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <span style="color:#ffffff;font-weight:900;font-size:0.875rem;text-transform:uppercase;letter-spacing:-0.01em;line-height:1;">${tutorName}</span>
+                            <div style="display:flex;">
+                                <span style="background:#ffffff;color:#000000;border-radius:0.3rem;border:1px solid #ffffff;padding:2px 8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:-0.01em;">${formatCreatedAt(createdAt)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
             const hasValidVideo = videoUrl && videoUrl.trim() !== "";
             let mediaContainer;
             if (hasValidVideo) {
@@ -2246,8 +2256,7 @@ else renderPosts([]);
             }
             section.appendChild(titleEl);
             section.appendChild(descBox);
-            section.appendChild(timeDisplay);
-            section.appendChild(tutorDisplay);
+            section.appendChild(profileHeader);
             section.appendChild(mediaContainer);
             return section;
         }
