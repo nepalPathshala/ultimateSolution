@@ -2101,21 +2101,21 @@ else renderPosts([]);
             const profileHeader = document.createElement('div');
             profileHeader.style.cssText = "background:#0f172a;border:1px solid #334155;border-radius:1rem;overflow:hidden;margin-bottom:1rem;";
             profileHeader.innerHTML = `
-    <div style="padding:10px 12px;">
-        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;">
-            <div style="display:flex;align-items:center;gap:12px;">
+    <div style="padding:20px 28px;">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:24px;">
+            <div style="display:flex;align-items:center;gap:16px;">
                 <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Tutoriom" alt="Profile"
-                    style="width:44px;height:44px;border-radius:50%;border:2px solid #f59e0b;background:#1e293b;flex-shrink:0;">
-                <div style="display:flex;flex-direction:column;gap:6px;">
-                    <span style="color:#ffffff;font-weight:900;font-size:0.875rem;text-transform:uppercase;letter-spacing:-0.01em;line-height:1;">${tutorName}</span>
+                    style="width:56px;height:56px;border-radius:50%;border:2px solid #f59e0b;background:#1e293b;flex-shrink:0;">
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                    <span style="color:#ffffff;font-weight:900;font-size:1.125rem;text-transform:uppercase;letter-spacing:-0.01em;line-height:1;">${tutorName}</span>
                     <div style="display:flex;">
-                        <span style="background:#f59e0b;color:#000000;border-radius:0.3rem;padding:2px 8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:-0.01em;">${formatCreatedAt(createdAt)}</span>
+                        <span style="background:#f59e0b;color:#000000;border-radius:0.3rem;padding:2px 8px;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:-0.01em;">${formatCreatedAt(createdAt)}</span>
                     </div>
                 </div>
             </div>
-            <div style="display:flex;gap:8px;flex-shrink:0;align-items:center;">
-                <button onclick="event.stopPropagation()" style="background:#f59e0b;color:#000000;border:none;border-radius:8px;padding:8px 14px;box-sizing:border-box;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;font-family:'Montserrat',sans-serif;transition:background 0.2s;box-shadow:0 4px 15px rgba(245,158,11,0.2);" onmouseover="this.style.background='#fbbf24'" onmouseout="this.style.background='#f59e0b'">Practice Questions</button>
-                <button onclick="event.stopPropagation()" style="background:#1e293b;color:#ffffff;border:1px solid #334155;border-radius:8px;padding:8px 14px;box-sizing:border-box;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;font-family:'Montserrat',sans-serif;transition:background 0.2s;" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">Explore Notes</button>
+            <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+                <button onclick="event.stopPropagation()" style="background:#f59e0b;color:#000000;border:none;border-radius:12px;padding:12px 24px;box-sizing:border-box;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;font-family:'Montserrat',sans-serif;transition:background 0.2s;box-shadow:0 4px 6px -1px rgba(245,158,11,0.2);" onmouseover="this.style.background='#fbbf24'" onmouseout="this.style.background='#f59e0b'">Practice Questions</button>
+                <button onclick="event.stopPropagation()" style="background:#1e293b;color:#ffffff;border:1px solid #475569;border-radius:12px;padding:12px 24px;box-sizing:border-box;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.05em;cursor:pointer;font-family:'Montserrat',sans-serif;transition:background 0.2s;" onmouseover="this.style.background='#334155'" onmouseout="this.style.background='#1e293b'">Explore Notes</button>
             </div>
         </div>
     </div>
