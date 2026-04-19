@@ -2450,80 +2450,65 @@ else renderPosts([]);
             if (!navCourseList) return;
 
             navCourseList.innerHTML = '';
-            courses.forEach((course, index) => {
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'nav-course-group';
-                groupDiv.id = `nav-course-${course.classId}`;
 
-                const headerBtn = document.createElement('button');
-                headerBtn.style.cssText = 'width:100%;display:flex;align-items:center;justify-content:space-between;padding:1rem;background:transparent;border:none;cursor:pointer;';
-                const leftSide = document.createElement('div');
-                leftSide.style.cssText = 'display:flex;align-items:center;gap:0.75rem;';
-                const numBadge = document.createElement('div');
-                numBadge.style.cssText = 'width:24px;height:24px;background:#1e3a8a;border-radius:6px;display:flex;align-items:center;justify-content:center;';
-                numBadge.innerHTML = `<span style="font-size:10px;font-weight:700;color:white;">${index + 1}</span>`;
-                const courseTitle = document.createElement('span');
-                courseTitle.textContent = course.className;
-                courseTitle.style.cssText = 'font-size:0.875rem;font-weight:700;color:#e2e8f0;letter-spacing:-0.01em;';
-                leftSide.appendChild(numBadge);
-                leftSide.appendChild(courseTitle);
-                const triangle = document.createElement('div');
-                triangle.className = 'nav-triangle';
-                headerBtn.appendChild(leftSide);
-                headerBtn.appendChild(triangle);
-
-                const subjectListDiv = document.createElement('div');
-                subjectListDiv.className = 'nav-subject-list';
-                subjectListDiv.id = `nav-subjects-${course.classId}`;
-                const subjectInner = document.createElement('div');
-                subjectInner.style.cssText = 'padding: 0 0.75rem 1rem; display:flex;flex-direction:column;gap:0.5rem;';
-
-                if (course.subjects.length === 0) {
-                    const noSub = document.createElement('div');
-                    noSub.style.cssText = 'font-size:0.8rem;color:#64748b;padding:0.5rem;';
-                    noSub.textContent = 'No subjects available';
-                    subjectInner.appendChild(noSub);
-                } else {
-                    course.subjects.forEach(sub => {
-                        const subjectItem = document.createElement('div');
-                        subjectItem.className = 'nav-subject-item';
-                        if (course.classId === selectedClassId && sub.subjectId === selectedSubjectId) { subjectItem.classList.add('active'); }
-                        subjectItem.innerHTML = `<div class="nav-subject-dot"></div><span style="font-size:0.875rem;font-weight:700;color:#cbd5e1;">${sub.subjectName}</span>`;
-                        subjectItem.addEventListener('click', () => {
-                            handleNavSubjectSelect(course.classId, sub.subjectId);
+            courses.forEach((course) => {
+                course.subjects.forEach((sub) => {
+                    const tutors = Array.isArray(sub.tutors) ? sub.tutors : [];
+                    if (tutors.length === 0) {
+                        navCourseList.appendChild(buildNavComboCard(course, sub, null));
+                    } else {
+                        tutors.forEach((tutor) => {
+                            navCourseList.appendChild(buildNavComboCard(course, sub, tutor));
                         });
-                        subjectInner.appendChild(subjectItem);
-                    });
-                }
-                subjectListDiv.appendChild(subjectInner);
-
-                headerBtn.addEventListener('click', () => {
-                    const isOpen = groupDiv.classList.contains('nav-open');
-                    document.querySelectorAll('.nav-course-group').forEach(g => {
-                        g.classList.remove('nav-open');
-                        const sl = g.querySelector('.nav-subject-list');
-                        if (sl) sl.classList.remove('nav-expanded');
-                    });
-                    if (!isOpen) {
-                        groupDiv.classList.add('nav-open');
-                        subjectListDiv.classList.add('nav-expanded');
                     }
                 });
-
-                groupDiv.appendChild(headerBtn);
-                groupDiv.appendChild(subjectListDiv);
-                navCourseList.appendChild(groupDiv);
             });
 
-            // Auto-expand the currently selected course
-            if (selectedClassId) {
-                const activeGroup = document.getElementById(`nav-course-${selectedClassId}`);
-                if (activeGroup) {
-                    activeGroup.classList.add('nav-open');
-                    const sl = activeGroup.querySelector('.nav-subject-list');
-                    if (sl) sl.classList.add('nav-expanded');
-                }
+            if (navCourseList.innerHTML === '') {
+                navCourseList.innerHTML = '<div style="text-align:center;color:#64748b;padding:2rem;">No courses available.</div>';
             }
+        }
+
+        function buildNavComboCard(course, sub, tutor) {
+            const tutorId = tutor ? (tutor.tutorId || tutor.id) : null;
+            const tutorName = tutor ? (tutor.tutorName || tutor.name || 'Unknown Tutor') : null;
+
+            const isActive = (
+                course.classId === selectedClassId &&
+                sub.subjectId === selectedSubjectId &&
+                tutorId === selectedTutorId
+            );
+
+            const card = document.createElement('div');
+            card.style.cssText = `
+                background-color: ${isActive ? '#10b981' : '#1e293b'};
+                border: 1px solid ${isActive ? '#059669' : '#334155'};
+                border-radius: 14px;
+                padding: 0.875rem 1rem;
+                margin-bottom: 0.625rem;
+                cursor: pointer;
+                transition: border-color 0.2s, background-color 0.2s;
+                display: flex;
+                flex-direction: column;
+                gap: 0.3rem;
+            `;
+
+            card.innerHTML = `
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+                    <span style="font-size:0.65rem;font-weight:700;background:${isActive ? 'rgba(255,255,255,0.25)' : '#1e3a8a'};color:white;padding:2px 7px;border-radius:999px;white-space:nowrap;">${course.className}</span>
+                    <span style="font-size:0.65rem;color:${isActive ? 'rgba(255,255,255,0.8)' : '#94a3b8'};">›</span>
+                    <span style="font-size:0.75rem;font-weight:700;color:${isActive ? '#ffffff' : '#e2e8f0'};">${sub.subjectName}</span>
+                </div>
+                ${tutorName ? `<div style="font-size:0.72rem;font-weight:600;color:${isActive ? 'rgba(255,255,255,0.85)' : '#64748b'};padding-left:2px;">👤 ${tutorName}</div>` : ''}
+            `;
+
+            card.addEventListener('click', () => {
+                handleNavComboSelect(course.classId, sub.subjectId, tutorId);
+            });
+            card.addEventListener('mouseover', () => { if (!isActive) card.style.borderColor = '#3b82f6'; });
+            card.addEventListener('mouseout', () => { if (!isActive) card.style.borderColor = '#334155'; });
+
+            return card;
         }
 
         async function initNavPanel() {
@@ -2561,7 +2546,14 @@ else renderPosts([]);
             const classesWithSubjects = await Promise.all(
                 classesData.map(async (cls) => {
                     const subjects = await fetchJSON(`${API_BASE}/subjects?classId=${encodeURIComponent(cls.classId)}`, 'Failed to load subjects');
-                    return { classId: cls.classId, className: cls.className, subjects: Array.isArray(subjects) ? subjects : [] };
+                    const subjectsArr = Array.isArray(subjects) ? subjects : [];
+                    const subjectsWithTutors = await Promise.all(
+                        subjectsArr.map(async (sub) => {
+                            const tutors = await fetchJSON(`${API_BASE}/tutors?classId=${encodeURIComponent(cls.classId)}&subjectId=${encodeURIComponent(sub.subjectId)}`, '');
+                            return { ...sub, tutors: Array.isArray(tutors) ? tutors : [] };
+                        })
+                    );
+                    return { classId: cls.classId, className: cls.className, subjects: subjectsWithTutors };
                 })
             );
 
@@ -2592,6 +2584,30 @@ else renderPosts([]);
 
             // Auto-select first tutor and fetch posts
             await autoSelectFirstTutorAndFetch();
+        }
+
+        async function handleNavComboSelect(classId, subjectId, tutorId) {
+            toggleNavMenu(false);
+
+            selectedClassId = classId;
+            selectedSubjectId = subjectId;
+            selectedTutorId = tutorId;
+            selectedChapterId = null;
+            if (navCoursesCache) { renderNavCourses(navCoursesCache); }
+
+            currentFeedMode = 'paginated';
+            paginationCursor = null;
+            hasMorePosts = false;
+            destroyAllPlayers();
+            postsContainer.innerHTML = '<div class="loader"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>';
+
+            await buildFilterUI();
+
+            if (selectedTutorId) {
+                await fetchPaginatedPosts(null, false);
+            } else {
+                await autoSelectFirstTutorAndFetch();
+            }
         }
 
         async function autoSelectFirstTutorAndFetch() {
@@ -2685,7 +2701,14 @@ else renderPosts([]);
                 const classesWithSubjects = await Promise.all(
                     classesData.map(async (cls) => {
                         const subjects = await fetchJSON(`${API_BASE}/subjects?classId=${encodeURIComponent(cls.classId)}`, '');
-                        return { classId: cls.classId, className: cls.className, subjects: Array.isArray(subjects) ? subjects : [] };
+                        const subjectsArr = Array.isArray(subjects) ? subjects : [];
+                        const subjectsWithTutors = await Promise.all(
+                            subjectsArr.map(async (sub) => {
+                                const tutors = await fetchJSON(`${API_BASE}/tutors?classId=${encodeURIComponent(cls.classId)}&subjectId=${encodeURIComponent(sub.subjectId)}`, '');
+                                return { ...sub, tutors: Array.isArray(tutors) ? tutors : [] };
+                            })
+                        );
+                        return { classId: cls.classId, className: cls.className, subjects: subjectsWithTutors };
                     })
                 );
                 navCoursesCache = classesWithSubjects; // cache is ready before user ever opens nav
